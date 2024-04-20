@@ -1,0 +1,76 @@
+.lotto {
+  text-align: center;
+  background-color: #f7d7b5;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+h2 {
+  color: #ff8c00;
+}
+
+.number-selectors,
+.powerball-selector {
+  margin-bottom: 20px;
+}
+
+.number-selectors select,
+.powerball-selector select {
+  margin-right: 10px;
+  background-color: #fff;
+  border: 1px solid #ff8c00;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.lotto-ticket {
+  background-color: #fff;
+  border: 2px solid #ff8c00;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  display: inline-block;
+}
+
+.ticket-numbers {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.ticket-number,
+.ticket-powerball {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-right: 10px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.ticket-powerball {
+  background-color: #ff0000;
+  color: #fff;
+}
+
+.ticket-number-label {
+  margin-top: 10px;
+  font-weight: bold;
+  color: #ff8c00;
+}
+
+.purchase-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 18px;
+  background-color: #ff8c00;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
