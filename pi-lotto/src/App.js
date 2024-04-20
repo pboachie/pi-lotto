@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import PiLotto from './PiLotto';
+import PiLotto from './js/PiLotto';
 
 function App() {
   return (

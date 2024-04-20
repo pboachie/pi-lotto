@@ -1,26 +1,44 @@
 .lotto {
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   background-color: #f7d7b5;
   padding: 20px;
   border-radius: 8px;
 }
 
-h2 {
-  color: #ff8c00;
+.number-selector-container {
+  flex: 1;
+  margin-right: 20px;
 }
 
-.number-selectors,
-.powerball-selector {
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
   margin-bottom: 20px;
 }
 
-.number-selectors select,
-.powerball-selector select {
-  margin-right: 10px;
+.number-button,
+.powerball-button {
   background-color: #fff;
   border: 1px solid #ff8c00;
   border-radius: 4px;
-  padding: 5px;
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.number-button.disabled,
+.powerball-button.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.lotto-ticket-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .lotto-ticket {
@@ -29,7 +47,6 @@ h2 {
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
-  display: inline-block;
 }
 
 .ticket-numbers {
@@ -73,4 +90,24 @@ h2 {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.powerball-grid {
+  text-align: center;
+}
+
+.powerball-grid h3 {
+  color: #ff8c00;
+  margin-bottom: 10px;
+}
+
+@media screen and (max-width: 768px) {
+  .lotto {
+    flex-direction: column;
+  }
+
+  .number-selector-container {
+    margin-right: 0;
+    margin-bottom: 20px;
+  }
 }

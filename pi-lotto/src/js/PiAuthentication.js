@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './PiAuthentication.css';
+import '../css/PiAuthentication.css';
 
 function PiAuthentication({ onAuthentication }) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);

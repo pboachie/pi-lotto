@@ -1,0 +1,23 @@
+.pi-lotto {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.lotto-pool {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff8c00;
+  margin-top: 10px;
+}
+
+main {
+  background-color: #f4f4f4;
+  padding: 20px;
+  border-radius: 4px;
+}
