@@ -1,11 +1,12 @@
 import React from 'react';
 import './App.css';
+import PiLotto from './PiLotto';
 
 function App() {
   return (
     <div className="App">
       <h1>Welcome to Pi-Lotto</h1>
-      {/* Add your app content here */}
+      <PiLotto />
     </div>
   );
 }
