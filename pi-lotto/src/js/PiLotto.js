@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import Lotto from '../js/Lotto';
 import PiAuthentication from '../js/PiAuthentication';
 import '../css/PiLotto.css';
-import config from '../config.json';
 import axios from 'axios';
 
 
@@ -29,34 +28,36 @@ function PiLotto() {
 
   const fetchLottoPool = async () => {
     try {
-      const appWalletSeed = config.APP_WALLET_SEED;
-      const appWalletAddress = config.APP_WALLET_ADDRESS;
-      const apiKey = config.APP_API_KEY;
-
-      const response = await axios.get(`https://api.minepi.com/v2/wallets/${appWalletAddress}`, {
+      const response = await axios.get('http://127.0.0.1:5000/api/lotto-pool', {
         headers: {
-          'Authorization': `Key ${apiKey}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
         },
-        params: {
-          seed: appWalletSeed
-        }
       });
 
-      const walletInfo = response.data;
-      setLottoPool(walletInfo.balance);
+      // check if balance else set to 0 and display error
+      if (!response.data.balance) {
+        setLottoPool(0);
+        // Alert error message from server
+        alert(response.data.error);
+        return;
+      }
+
+      const lottoPool = response.data.balance;
+      setLottoPool(lottoPool);
     } catch (error) {
-      console.error('Error fetching lotto pool amount:', error);
+      // Show the error
+      alert('Server currently under maintenance. Please try again later.');
     }
   };
 
   return (
     <div className="pi-lotto">
       <header>
-        <h1>Pi-Lotto</h1>
+        <h1>Win {process.env.NODE_ENV !== 'production' ? 'Test-' : ''}π Today!</h1>
         {isAuthenticated && (
           <div className="lotto-pool">
-            Current Lotto Pool: {lottoPool} Pi
+
+            Current Lotto Pool: {lottoPool} {process.env.NODE_ENV !== 'production' ? 'Test-' : ''}π
           </div>
         )}
       </header>
