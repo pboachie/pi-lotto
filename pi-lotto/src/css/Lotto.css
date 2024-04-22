@@ -20,7 +20,7 @@
 }
 
 .number-button,
-.powerball-button {
+.PiLotto-button {
   background-color: #fff;
   border: 1px solid #ff8c00;
   border-radius: 4px;
@@ -30,7 +30,7 @@
 }
 
 .number-button.disabled,
-.powerball-button.disabled {
+.PiLotto-button.disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
@@ -56,7 +56,7 @@
 }
 
 .ticket-number,
-.ticket-powerball {
+.ticket-PiLotto {
   background-color: #f0f0f0;
   border: 1px solid #ccc;
   border-radius: 50%;
@@ -70,7 +70,7 @@
   font-weight: bold;
 }
 
-.ticket-powerball {
+.ticket-PiLotto {
   background-color: #ff0000;
   color: #fff;
 }
@@ -92,11 +92,11 @@
   cursor: pointer;
 }
 
-.powerball-grid {
+.PiLotto-grid {
   text-align: center;
 }
 
-.powerball-grid h3 {
+.PiLotto-grid h3 {
   color: #ff8c00;
   margin-bottom: 10px;
 }
