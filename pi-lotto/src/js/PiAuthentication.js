@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import '../css/PiAuthentication.css';
 import axios from 'axios';
+
+import '../css/PiAuthentication.css';
+
 
 function PiAuthentication({ onAuthentication }) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -11,16 +13,8 @@ function PiAuthentication({ onAuthentication }) {
       const scopes = ['username', 'payments'];
       const Pi = window.Pi;
       const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
-
-       // Send the user's ID to the backend for token generation
-       const response = await axios.post('http://127.0.0.1:5000/login', { uid: authResult.user.uid });
-       const { access_token } = response.data;
-
-      // Store the access token in local storage or state management solution (Improve to use a secure storage solution)
-      localStorage.setItem('access_token', access_token);
-
+      await signInUser(authResult);
       onAuthentication(true, authResult.user);
-
     } catch (err) {
       console.error('Authentication failed', err);
       onAuthentication(false, null);
@@ -28,9 +22,31 @@ function PiAuthentication({ onAuthentication }) {
     setIsAuthenticating(false);
   };
 
-  const onIncompletePaymentFound = (payment) => {
+  const signInUser = async (authResult) => {
+    try {
+
+      if (localStorage.getItem('@pi-lotto:access_token')) {
+        localStorage.removeItem('@pi-lotto:access_token');
+      }
+
+      const response = await axios.post('http://127.0.0.1:5000/signin', { authResult });
+
+      if(response.data.access_token) {
+        localStorage.setItem('@pi-lotto:access_token', response.data.access_token);
+      }
+    } catch (error) {
+      console.error('Sign-in error:', error);
+    }
+  };
+
+  const onIncompletePaymentFound = async (payment) => {
     console.log('Incomplete payment found:', payment);
-    // Handle incomplete payment if needed
+    try {
+      const response = await axios.post('/incomplete', { payment });
+      console.log(response.data);
+    } catch (error) {
+      console.error('Incomplete payment error:', error);
+    }
   };
 
   return (
