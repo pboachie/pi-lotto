@@ -2,12 +2,16 @@
 import sys
 import yaml
 import logging
+import requests
+import uuid
+import json
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from src.pi_python import PiNetwork
-import requests
+
 
 def create_app(config_path):
     app = Flask(__name__)
@@ -45,6 +49,23 @@ def create_app(config_path):
     pi_network = PiNetwork()
     pi_network.initialize(config['api']['base_url'], config['api']['server_api_key'], config['api']['app_wallet_seed'], config['api']['network'])
 
+    # Game model
+    class Game(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        game_id = db.Column(db.String(100), unique=True, nullable=False)
+        pool_amount = db.Column(db.Float, nullable=False, default=0)
+        num_players = db.Column(db.Integer, nullable=False, default=0)
+        end_time = db.Column(db.DateTime, nullable=False)
+        status = db.Column(db.String(20), nullable=False, default='active')
+        dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
+        dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    # User Game model
+    class UserGame(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+        game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
+        dateJoined = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     # User model
     class User(db.Model):
@@ -136,6 +157,37 @@ def create_app(config_path):
             logging.error(err)
             return False
 
+    # Function to generate a unique game_id. It verifies that the game_id is unique in the database
+    def generate_game_id():
+        game_id = str(uuid.uuid4())
+        game = Game.query.filter_by(game_id=game_id).first()
+        if game is not None:
+            return generate_game_id()
+        return game_id
+
+    # Function to validate the end_time
+    def validate_end_time(data):
+        if 'end_time' not in data:
+            return {'error': 'end_time is required'}, 400
+
+        try:
+
+            print(data['end_time'])
+            # check if the end_time is a valid datetime object
+            end_time = datetime.fromisoformat(data['end_time'])
+
+            # Check if the end_time is at least 24 hours from now (date time)
+            if end_time < datetime.now() + timedelta(days=1):
+                return {'error': 'end_time must be at least 24 hours from now'}, 400
+
+            # Check if the date time is correct format for db
+            end_time = end_time.isoformat()
+        except ValueError:
+            return {'error': 'Invalid date format. Valid format is YYYY-MM-DDTHH:MM:SS'}, 400
+
+        return end_time, 200
+
+
     @app.route('/signin', methods=['POST'])
     def signin():
         auth_result = request.json['authResult']
@@ -160,6 +212,7 @@ def create_app(config_path):
             return jsonify({'error': 'User not authorized'}), 401
 
     @app.route('/incomplete', methods=['POST'])
+    @jwt_required()
     def handle_incomplete_payment():
         payment = request.json['payment']
         payment_id = payment['identifier']
@@ -292,6 +345,121 @@ def create_app(config_path):
             "serviceFee": 0.0125
         }
         return jsonify(ticket_details)
+
+    @app.route('/admin/create-game', methods=['POST'])
+    @jwt_required()
+    def create_game():
+        uid = get_jwt_identity()
+        if uid != 'cfed0fd5-0b20-46bf-b54d-3e6d8746ad4c':
+            return jsonify({'error': 'Unauthorized'}), 401
+
+        data = request.json
+        # if end_time is not provided, return an error in json format
+        end_time, status_code = validate_end_time(data)
+
+        if status_code != 200:
+            return jsonify(end_time), status_code
+
+        # Convert the end_time string to a datetime object
+        end_time = datetime.fromisoformat(end_time)
+
+        # Generate a unique game_id
+        game_id = generate_game_id()
+        # Get current wallet balance
+        balance = pi_network.get_balance()
+        # Set pool amount to 2% of the wallet balance
+        pool_amount = balance * 0.02
+        # set the number of players to 1
+        num_players = 1
+
+        new_game = Game(game_id=game_id, pool_amount=pool_amount, num_players=num_players, end_time=end_time)
+        db.session.add(new_game)
+        db.session.commit()
+
+        isTest = ''
+
+        # if env is development, , set the pool amount to 2π
+        if app.config['DEBUG'] != True:
+            isTest = " Test"
+
+        return jsonify({'message': 'Game created successfully with ' + str(pool_amount) + isTest + 'π'}), 201
+
+    @app.route('/admin/update-game/<game_id>', methods=['PUT'])
+    @jwt_required()
+    def update_game(game_id):
+        username = get_jwt_identity()
+        if username != 'pboachie':
+            return jsonify({'error': 'Unauthorized'}), 401
+
+        game = Game.query.filter_by(game_id=game_id).first()
+        if game is None:
+            return jsonify({'error': 'Game not found'}), 404
+
+        data = request.json
+        game.pool_amount = data.get('pool_amount', game.pool_amount)
+        game.num_players = data.get('num_players', game.num_players)
+        game.end_time = datetime.fromisoformat(data.get('end_time', game.end_time.isoformat()))
+        game.status = data.get('status', game.status)
+        db.session.commit()
+
+        return jsonify({'message': 'Game updated successfully'}), 200
+
+    @app.route('/join-game/<game_id>', methods=['POST'])
+    @jwt_required()
+    def join_game(game_id):
+        user_id = get_jwt_identity()
+        game = Game.query.filter_by(game_id=game_id).first()
+        if game is None:
+            return jsonify({'error': 'Game not found'}), 404
+
+        user_game = UserGame.query.filter_by(user_id=user_id, game_id=game.id).first()
+        if user_game is not None:
+            return jsonify({'error': 'User has already joined this game'}), 400
+
+        new_user_game = UserGame(user_id=user_id, game_id=game.id)
+        db.session.add(new_user_game)
+        game.num_players += 1
+        db.session.commit()
+
+        return jsonify({'message': 'User joined the game successfully'}), 200
+
+    @app.route('/game-details/<game_id>', methods=['GET'])
+    @jwt_required()
+    def get_game_details(game_id):
+        game = Game.query.filter_by(game_id=game_id).first()
+        if game is None:
+            return jsonify({'error': 'Game not found'}), 404
+
+        game_details = {
+            'game_id': game.game_id,
+            'pool_amount': game.pool_amount,
+            'num_players': game.num_players,
+            'end_time': game.end_time.isoformat(),
+            'status': game.status
+        }
+        return jsonify(game_details), 200
+
+    @app.route('/user-games', methods=['GET'])
+    @jwt_required()
+    def get_user_games():
+        user_id = get_jwt_identity()
+        user_games = UserGame.query.filter_by(user_id=user_id).all()
+
+        game_ids = [user_game.game_id for user_game in user_games]
+        games = Game.query.filter(Game.id.in_(game_ids)).all()
+
+        game_details = []
+        for game in games:
+            game_detail = {
+                'game_id': game.game_id,
+                'pool_amount': game.pool_amount,
+                'num_players': game.num_players,
+                'end_time': game.end_time.isoformat(),
+                'status': game.status
+            }
+            game_details.append(game_detail)
+
+        return jsonify(game_details), 200
 
     return app, db
 
