@@ -241,6 +241,8 @@ def create_app(config_path):
 
         if balanceIsUpdated.status_code != 200:
             logging.error(balanceIsUpdated.json())
+            db.session.refresh(transaction)
+            db.session.delete(transaction)
             return False
         else:
             return True
@@ -314,6 +316,85 @@ def create_app(config_path):
         except requests.exceptions.RequestException as err:
             logging.error(err)
             return jsonify({'error': 'Failed to fetch lotto pool amount'}), 500
+
+    @app.route('/submit-ticket', methods=['POST'])
+    @jwt_required()
+    def submit_ticket():
+        user_id = get_jwt_identity()
+        user = User.query.filter_by(uid=user_id).first()
+        if user is None:
+            return jsonify({'error': 'User not found'}), 404
+
+        data = request.json
+        game_id = data.get('game_id')
+        lotto_numbers = data.get('lotto_numbers')
+        powerball_number = data.get('powerball_number')
+        ticket_number = data.get('ticket_number')
+        estimated_fees = data.get('estimated_fees')
+
+        # Validate that all required fields are provided and not empty
+        if game_id is None or lotto_numbers is None or powerball_number is None or ticket_number is None or estimated_fees is None:
+            return jsonify({'error': 'All fields are required'}), 400
+
+        # Validation
+        if len(lotto_numbers) != 6:
+            return jsonify({'error': 'Invalid lotto numbers'}), 400
+
+        if not all(isinstance(number, int) for number in lotto_numbers):
+            return jsonify({'error': 'Invalid lotto numbers'}), 400
+
+        if not isinstance(powerball_number, int):
+            return jsonify({'error': 'Invalid powerball number'}), 400
+
+        # Ticket number contains no special characters
+        if not ticket_number.isalnum():
+            return jsonify({'error': 'Invalid ticket number'}), 400
+
+        # Check if game exists
+        game = Game.query.filter_by(game_id=game_id).first()
+        if game is None:
+            return jsonify({'error': 'Game not found'}), 404
+
+
+        # Validate the ticket price by checking with the API
+        try:
+            ticket_details = get_ticket_details()
+            ticket_price = ticket_details['ticketPrice']
+            base_fee = ticket_details['baseFee']
+            service_fee = ticket_details['serviceFee']
+            total_cost = ticket_price + base_fee + service_fee
+
+            if estimated_fees != total_cost:
+                return jsonify({'error': 'Ticket price mismatch'}), 400
+
+            # Check if the user has enough balance to purchase the ticket
+            if user.balance < total_cost:
+                return jsonify({'error': 'Insufficient balance'}), 400
+        except requests.exceptions.RequestException as err:
+            logging.error(err)
+            return jsonify({'error': 'Failed to validate ticket price'}), 500
+
+        # Save the ticket details
+        new_lotto_stats = LottoStats(
+            user_id=user.id,
+            game_id=game_id,
+            numbers_played=','.join(map(str, lotto_numbers)),
+            win_amount=0
+        )
+        db.session.add(new_lotto_stats)
+        db.session.commit()
+
+        # Create account transactions
+        transactionCreated = create_account_transaction(user.id, 'lotto_entry', total_cost, reference_id=new_lotto_stats.id)
+
+        # if transactionCreated = false, undo the transaction
+        if not transactionCreated:
+            db.session.refresh(new_lotto_stats)
+            db.session.delete(new_lotto_stats)
+            db.session.commit()
+            return jsonify({'error': 'Failed to create account transaction'}), 500
+
+        return jsonify({'message': 'Ticket submitted successfully'}), 200
 
     @app.route("/create_payment", methods=["POST"], endpoint="create_payment")
     @jwt_required()
