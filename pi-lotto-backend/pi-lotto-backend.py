@@ -72,9 +72,38 @@ def create_app(config_path):
         id = db.Column(db.Integer, primary_key=True)
         username = db.Column(db.String(100), unique=True, nullable=False)
         uid = db.Column(db.String(36), unique=True, nullable=False)
+        balance = db.Column(db.Float, default=0)
         active = db.Column(db.Boolean, default=True)
         dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
         dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    # Wallet model
+    class Wallet(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+        address = db.Column(db.String(100), unique=True, nullable=False)
+        dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # Transaction model
+    class Transaction(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+        wallet_id = db.Column(db.Integer, db.ForeignKey('wallet.id'), nullable=False)
+        amount = db.Column(db.Float, nullable=False)
+        transaction_type = db.Column(db.String(20), nullable=False)  # 'deposit' or 'withdrawal'
+        transaction_id = db.Column(db.String(100), unique=True, nullable=False)
+        status = db.Column(db.String(20), nullable=False)
+        dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
+        dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    # Account Transaction model
+    class AccountTransaction(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+        transaction_type = db.Column(db.String(20), nullable=False)  # 'deposit', 'withdrawal', 'game_entry', etc.
+        amount = db.Column(db.Float, nullable=False)
+        reference_id = db.Column(db.String(100), nullable=True)  # Reference to the associated transaction or game entry
+        dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     # Payment model
     class Payment(db.Model):
@@ -99,16 +128,6 @@ def create_app(config_path):
         scope = db.Column(db.String(20), nullable=False)
         active = db.Column(db.Boolean, default=True)
         dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
-
-    # Class to keep a list of all the transactions
-    class Transaction(db.Model):
-        id = db.Column(db.Integer, primary_key=True)
-        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-        amount = db.Column(db.Float, nullable=False)
-        transaction_id = db.Column(db.String(100), unique=True, nullable=False)
-        status = db.Column(db.String(20), nullable=False)
-        dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
-        dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
     # Function to store user data in the database
     def update_user_data(user_data):
@@ -186,6 +205,45 @@ def create_app(config_path):
             return {'error': 'Invalid date format. Valid format is YYYY-MM-DDTHH:MM:SS'}, 400
 
         return end_time, 200
+
+    def update_user_balance(user_id, transaction_amount, transaction_type):
+        user = User.query.get(user_id)
+        if user:
+            if transaction_type == 'deposit':
+                user.balance += transaction_amount
+            elif transaction_type == 'withdrawal':
+                user.balance -= transaction_amount
+            elif transaction_type == 'game_entry':
+                user.balance -= transaction_amount
+            elif transaction_type == 'game_winnings':
+                user.balance += transaction_amount
+            elif transaction_type == 'lotto_winnings':
+                user.balance += transaction_amount
+            elif transaction_type == 'lotto_entry':
+                user.balance -= transaction_amount
+            else:
+                return jsonify({'error': 'Invalid transaction type'}), 400
+
+            db.session.commit()
+            return jsonify({'message': 'User balance updated successfully'}), 200
+
+    def create_account_transaction(user_id, transaction_type, amount, reference_id=None):
+        transaction = AccountTransaction(
+            user_id=user_id,
+            transaction_type=transaction_type,
+            amount=amount,
+            reference_id=reference_id
+        )
+        db.session.add(transaction)
+        db.session.commit()
+
+        balanceIsUpdated = update_user_balance(user_id, amount, transaction_type)
+
+        if balanceIsUpdated.status_code != 200:
+            logging.error(balanceIsUpdated.json())
+            return False
+        else:
+            return True
 
 
     @app.route('/signin', methods=['POST'])
