@@ -1,3 +1,4 @@
+// PurchaseModal.jsx
 import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import JsBarcode from 'jsbarcode';
@@ -35,9 +36,10 @@ function PurchaseModal({ numberSets = [], ticketNumber, ticketPrice, baseFee, se
             numberSets.map((set, index) => (
               <div key={index} className="ticket-number-set">
                 {set.numbers.map((number, numberIndex) => (
-                  <span key={numberIndex} className="ticket-number">{number}</span>
+                  <span key={numberIndex} className="ticket-number">
+                    {number}
+                  </span>
                 ))}
-                <span className='ticket-number-set'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
                 <span className="ticket-PiLotto">{set.PiLotto}</span>
               </div>
             ))
@@ -57,7 +59,9 @@ function PurchaseModal({ numberSets = [], ticketNumber, ticketPrice, baseFee, se
         <div className="ticket-barcode-section">
           <svg ref={barcodeRef} />
         </div>
-        <button className="close-button" onClick={onClose}>Close</button>
+        <button className="close-button" onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>,
     document.body
