@@ -1,104 +1,96 @@
+/* PurchaseModal.css */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
-  }
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
 
-  .modal-overlay .modal-content {
-    background-color: #f5f5dc;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
-    width: 100%;
-    font-family: 'Arial', sans-serif;
-    text-align: center;
-  }
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
 
+.ticket-modal {
+  text-align: center;
+}
 
-  .modal-overlay .ticket-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
+.ticket-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
 
-  .modal-overlay .ticket-pilotto-label {
-    font-size: 18px;
-    font-weight: bold;
-  }
+.ticket-pilotto-label {
+  font-size: 24px;
+  font-weight: bold;
+  margin-right: 10px;
+}
 
-  .modal-overlay .ticket-PiLotto-symbol {
-    font-size: 24px;
-    font-weight: bold;
-  }
+.ticket-PiLotto-symbol {
+  font-size: 32px;
+}
 
-  .modal-overlay .ticket-numbers-section {
-    margin-bottom: 20px;
-  }
+.ticket-numbers-section {
+  margin-bottom: 20px;
+}
 
-  .modal-overlay .ticket-number-set {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 10px;
-  }
+.ticket-number-set {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
 
-  .modal-overlay .ticket-number {
-    background-color: #ffffff;
-    border: 1px solid #000000;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 16px;
-    font-weight: bold;
-    margin: 0 5px;
-  }
+.ticket-number {
+  background-color: #f0f0f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
 
-  .modal-overlay .ticket-PiLotto {
-    font-size: 16px;
-    font-weight: bold;
-    margin-left: 10px;
-  }
+.ticket-PiLotto {
+  background-color: #007bff;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
 
-  .modal-overlay .ticket-details-section {
-    margin-bottom: 20px;
-  }
+.ticket-details-section {
+  margin-bottom: 20px;
+}
 
-  .modal-overlay .ticket-number-label {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 10px;
-  }
+.ticket-number-label {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
 
-  .modal-overlay .ticket-cost-section {
-    font-size: 14px;
-    margin-bottom: 10px;
-  }
+.ticket-cost-section {
+  margin-bottom: 10px;
+}
 
-  .modal-overlay .ticket-barcode-section {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-  }
+.ticket-barcode-section {
+  margin-bottom: 20px;
+}
 
-  .modal-overlay .close-button {
-    background-color: #ff0000;
-    color: #ffffff;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-  }
+.close-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
