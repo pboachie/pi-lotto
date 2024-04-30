@@ -247,7 +247,6 @@ def create_app(config_path):
         else:
             return True
 
-
     @app.route('/signin', methods=['POST'])
     def signin():
         auth_result = request.json['authResult']
@@ -320,6 +319,20 @@ def create_app(config_path):
         except requests.exceptions.RequestException as err:
             logging.error(err)
             return jsonify({'error': 'Failed to fetch lotto pool amount'}), 500
+
+    @app.route('/api/user-balance', methods=['GET'])
+    @jwt_required()
+    def get_user_balance():
+        user_id = get_jwt_identity()
+        user = User.query.filter_by(uid=user_id).first()
+        if user is None:
+            return jsonify({'error': 'User not found'}), 404
+
+        # if debug mode is enabled, return the balance as 1000
+        if app.config['DEBUG'] == True:
+            print("User balance: ", user.balance)
+
+        return jsonify({'balance': user.balance}), 200
 
     @app.route('/submit-ticket', methods=['POST'])
     @jwt_required()

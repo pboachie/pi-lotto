@@ -10,7 +10,8 @@ import { FaBars } from 'react-icons/fa';
 function PiLotto() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [lottoPool, setLottoPool] = useState(0);
+  // const [lottoPool, setLottoPool] = useState(0);
+  const [userBalance, setUserBalance] = useState(0);
   const [selectedGame, setSelectedGame] = useState(null);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +24,8 @@ function PiLotto() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      fetchLottoPool();
+      // fetchLottoPool();
+      fetchUserBalance();
     }
   }, [isAuthenticated, user]);
 
@@ -42,22 +44,45 @@ function PiLotto() {
     setUser(userInfo);
   };
 
-  const fetchLottoPool = async () => {
+  // const fetchLottoPool = async () => {
+  //   try {
+  //     const response = await axios.get('http://127.0.0.1:5000/api/lotto-pool', {
+  //       headers: {
+  //         Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+  //       },
+  //     });
+
+  //     if (!response.data.balance) {
+  //       setLottoPool(0);
+  //       alert(response.data.error);
+  //       return;
+  //     }
+
+  //     const lottoPool = response.data.balance;
+  //     setLottoPool(lottoPool);
+  //   } catch (error) {
+  //     alert('Server currently under maintenance. Please try again later.');
+  //   }
+  // };
+
+  const fetchUserBalance = async () => {
     try {
-      const response = await axios.get('http://127.0.0.1:5000/api/lotto-pool', {
+      const response = await axios.get('http://localhost:5000/api/user-balance', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
         },
       });
 
-      if (!response.data.balance) {
-        setLottoPool(0);
+      // if response is not 200, return false
+      const status = response.status === 200;
+
+      if (!status) {
+        setUserBalance(0);
         alert(response.data.error);
         return;
       }
 
-      const lottoPool = response.data.balance;
-      setLottoPool(lottoPool);
+      setUserBalance(parseFloat(response.data.balance));
     } catch (error) {
       alert('Server currently under maintenance. Please try again later.');
     }
@@ -106,7 +131,7 @@ function PiLotto() {
         {isAuthenticated && (
           <div className="user-info">
             <span>Welcome, {user.username}</span>
-            <span>Balance: {lottoPool} Test-π</span>
+            <span>Balance: {userBalance} Test-π</span>
           </div>
         )}
       </header>
