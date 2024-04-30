@@ -9,15 +9,16 @@ database:
   track_modifications: false
 
 api:
-  server_api_key: 'CHANGE_ME'
+  server_api_key: 'egx1oqqi3a7od9b6ujbqoq2lp8f2kfm7hgve9lits4mggsta5wcxojcdqfsvmupr'
   base_url: 'https://api.minepi.com/v2'
-  app_wallet_seed: 'CHANGE_ME'
-  app_wallet_address: 'CHANGE_ME'
+  app_wallet_seed: 'SA2EVUVTAXHXSZR2QMZZT7XQQB7JLM4FLCJ66VFD2SB6EMR4DVFUCUL7'
+  app_wallet_address: 'GBVH52WDRYMVS7Q5CEZ4BUSCPXYAZWLOTICA5IZKPFYCS5CGODKRGUN7'
   # Pi Network" | "Pi Testnet
   network: Pi Testnet
 
 jwt:
-  secret_key: 'CHANGE_ME'
+  secret_key: 'b6e7sx9a3d8f2kfm7hgve9lits4mggsta5wcxojcdqfsvmupr'
+  token_location: 'headers'
 
 logging:
   level: 'INFO'
