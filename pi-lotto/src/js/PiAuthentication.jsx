@@ -12,8 +12,7 @@ function PiAuthentication({ onAuthentication }) {
       const scopes = ['username', 'payments', 'wallet_address'];
       const Pi = window.Pi;
       const authResult = await Pi.authenticate(scopes, onIncompletePaymentFound);
-      await signInUser(authResult);
-      onAuthentication(true, authResult.user);
+      onAuthentication(await signInUser(authResult), authResult.user);
     } catch (err) {
       console.error('Authentication failed', err);
       onAuthentication(false, null);
@@ -23,15 +22,29 @@ function PiAuthentication({ onAuthentication }) {
 
   const signInUser = async (authResult) => {
     try {
+      // Remove the access token if it exists
       if (localStorage.getItem('@pi-lotto:access_token')) {
         localStorage.removeItem('@pi-lotto:access_token');
       }
+
+      // Fetch the access token from the server
       const response = await axios.post('http://127.0.0.1:5000/signin', { authResult });
+
+
+      // Return false if status is not 200
+      if (response.status !== 200) {
+        return false;
+      }
+
+      // Save the access token to the local storage
       if (response.data.access_token) {
         localStorage.setItem('@pi-lotto:access_token', response.data.access_token);
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Sign-in error:', error);
+      return false;
     }
   };
 

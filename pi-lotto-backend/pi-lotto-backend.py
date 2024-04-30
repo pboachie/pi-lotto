@@ -260,6 +260,10 @@ def create_app(config_path):
             response.raise_for_status()
             user_data = response.json()
 
+            # if status is not 200, return an error message
+            if response.status_code != 200:
+                return jsonify({'error': 'Invalid authorization'}), 401
+
             # Store user data in the database
             user = update_user_data(user_data)
 
