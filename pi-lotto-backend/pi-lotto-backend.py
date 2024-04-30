@@ -159,23 +159,6 @@ def create_app(config_path):
 
         return new_user
 
-    # Function to validate the transaction
-    def validate_tx(tx_url):
-        try:
-            response = requests.get(tx_url)
-            response.raise_for_status()
-            tx_data = response.json()
-            logging.info(tx_data)
-
-            # Check if the transaction is valid
-            if tx_data['status'] == 'success':
-                return True
-            else:
-                return False
-        except requests.exceptions.RequestException as err:
-            logging.error(err)
-            return False
-
     # Function to generate a unique game_id. It verifies that the game_id is unique in the database
     def generate_game_id():
         game_id = str(uuid.uuid4())
@@ -247,6 +230,106 @@ def create_app(config_path):
         else:
             return True
 
+    # Function to approve a payment to get the txid
+    def approve_payment(payment_id):
+        try:
+            user_id = get_jwt_identity()
+            data = request.get_json()
+            payment_id = data["paymentId"]
+
+            # Approve the payment using the Python SDK
+            pi_network.get_payment(payment_id)
+
+            return jsonify({'message': 'Payment approved successfully'}), 200
+        except Exception as err:
+            logging.error(err)
+            return jsonify({'error': 'Failed to approve payment'}), 500
+
+    # Function to create a payment
+    def create_payment(data={}):
+        data = request.get_json()
+        payment_data = {
+            "payment": {
+                "amount": data["amount"],
+                "memo": data["memo"],
+                "metadata": data["metadata"],
+                "uid": data["uid"]
+            }
+        }
+        headers = {
+            "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+            "Content-Type": "application/json"
+        }
+        response = requests.post(f"{app.config['BASE_URL']}/payments", json=payment_data, headers=headers)
+
+        print("Payment response: ", response.json())
+        return jsonify(response.json())
+
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        return response
+
+
+    @app.route("/api/create_deposit", methods=["POST"], endpoint="create_deposit")
+    @jwt_required()
+    def create_deposit():
+        try:
+            user_id = get_jwt_identity()
+            data = request.get_json()
+            amount = data["amount"]
+
+            uid = user_id["uid"]
+
+            # Check if the user exists
+            user = User.query.filter_by(uid=uid).first()
+            if user is None:
+                return jsonify({'error': 'User not found. Unable to create deposit'}), 404
+
+            # Check if the amount is a positive number
+            if amount <= 0:
+                return jsonify({'error': 'Invalid amount. Amount must be a positive number'}), 400
+
+            deposit_id = str(uuid.uuid4())
+
+            # Generate memo and metadata
+            memo = f"Deposit to Pi-Games account"
+            metadata = {
+                "app_version": "1.0",
+                "deposit_id": deposit_id
+            }
+
+            # if debug mode is enabled, append "test: true" to the metadata
+            if app.config['DEBUG'] == True:
+                metadata["test"] = True
+
+            # Make sure the amount is in the correct format and a float
+            amount = float(amount)
+
+            data = {
+                "amount": amount,
+                "memo": memo,
+                "metadata": metadata,
+                "uid": uid
+            }
+
+            # Create a payment using the internal API
+            response = create_payment(data)
+
+            # get txid from the response
+            txid = response.json().get('transaction', {}).get('txid')
+
+            print("Transaction ID: ", txid)
+
+            # Approve the payment using internal API
+            response = approve_payment(txid)
+            return jsonify(response.json())
+
+        except requests.exceptions.RequestException as err:
+            logging.error(err)
+            return jsonify({'error': 'Failed to create deposit'}), 500
+
     @app.route('/signin', methods=['POST'])
     def signin():
         auth_result = request.json['authResult']
@@ -280,28 +363,19 @@ def create_app(config_path):
         payment = request.json['payment']
         payment_id = payment['identifier']
         txid = payment.get('transaction', {}).get('txid')
-        tx_url = payment.get('transaction', {}).get('_link')
-
-        # Check the transaction on the Pi blockchain using the tx_url
-        isValidTX = validate_tx(tx_url)
-
-        if not isValidTX:
-            return jsonify({'error': 'Invalid transaction'}), 400
 
         # TODO: Verify the payment details (e.g., amount, memo) against your database
         # TODO: Mark the order as paid in your database if the payment is valid
 
         try:
             # Let Pi Servers know that the payment is completed
-            headers = {'Authorization': f"Key {app.config['SERVER_API_KEY']}"}
-            payload = {'txid': txid}
-            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json=payload, headers=headers)
-            response.raise_for_status()
+            pi_network.complete_payment(payment_id, txid)
 
             return jsonify({'message': f'Handled the incomplete payment {payment_id}'}), 200
-        except requests.exceptions.RequestException as err:
+        except Exception as err:
             logging.error(err)
             return jsonify({'error': 'Failed to complete the payment'}), 500
+
 
     @app.route("/api/lotto-pool", methods=["GET"])
     @jwt_required()
@@ -413,58 +487,73 @@ def create_app(config_path):
 
         return jsonify({'message': 'Ticket submitted successfully'}), 200
 
-    @app.route("/create_payment", methods=["POST"], endpoint="create_payment")
-    @jwt_required()
-    def create_payment():
-        data = request.get_json()
-        payment_data = {
-            "payment": {
-                "amount": data["amount"],
-                "memo": data["memo"],
-                "metadata": data["metadata"],
-                "uid": data["uid"]
-            }
-        }
-        headers = {
-            "Authorization": f"Key {app.config['SERVER_API_KEY']}",
-            "Content-Type": "application/json"
-        }
-        response = requests.post(f"{app.config['BASE_URL']}/payments", json=payment_data, headers=headers)
-        return jsonify(response.json())
-
     @app.route("/get_payment/<payment_id>", methods=["GET"], endpoint="get_payment")
     @jwt_required()
     def get_payment(payment_id):
+        user_id = get_jwt_identity()
+        user_id = user_id["uid"]
+
+        # Check if the user exists
+        user = User.query.filter_by(uid=user_id).first()
+        if user is None:
+            print("User not found")
+            return jsonify({'error': 'User not found'}), 404
+
+        # Create payment in database if it doesn't exist
+        payment = Payment.query.filter_by(id=payment_id).first()
+        if payment is None:
+            new_payment = Payment(id=payment_id, user_id=user.id, amount=0, transaction_id="", status="pending")
+            db.session.add(new_payment)
+            db.session.commit()
+        else:
+            # Payment exists, return error
+            return jsonify({'error': 'Payment already exists'}), 400
+
         headers = {
             "Authorization": f"Key {app.config['SERVER_API_KEY']}"
         }
         response = requests.get(f"{app.config['BASE_URL']}/payments/{payment_id}", headers=headers)
         return jsonify(response.json())
 
-    @app.route("/approve_payment/<payment_id>", methods=["POST"], endpoint="approve_payment")
-    @jwt_required()
-    def approve_payment(payment_id):
-        headers = {
-            "Authorization": f"Key {app.config['SERVER_API_KEY']}"
-        }
-        response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/approve", headers=headers)
-        return jsonify(response.json())
-
     @app.route("/complete_payment/<payment_id>", methods=["POST"], endpoint="complete_payment")
     @jwt_required()
     def complete_payment(payment_id):
-        data = request.get_json()
-        txid = data["txid"]
-        headers = {
-            "Authorization": f"Key {app.config['SERVER_API_KEY']}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "txid": txid
-        }
-        response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json=payload, headers=headers)
-        return jsonify(response.json())
+        try:
+            user_id = get_jwt_identity()
+            data = request.get_json()
+            payment_id = data["paymentId"]
+            txid = data["txid"]
 
+            # Complete the payment using the Python SDK
+            pi_network.complete_payment(payment_id, txid)
+
+            # Update the payment status in the database
+            payment = Payment.query.filter_by(id=payment_id).first()
+            if payment:
+                payment.status = "completed"
+                payment.transaction_id = txid
+                db.session.commit()
+
+                # Create an account transaction
+                new_transaction = AccountTransaction(
+                    user_id=user_id,
+                    transaction_type="deposit",
+                    amount=payment.amount,
+                    reference_id=payment.id
+                )
+
+                if new_transaction is None:
+                    # Rollback the payment status
+                    payment.status = "pending"
+                    db.session.commit()
+                    return jsonify({'error': 'Failed to create account transaction'}), 500
+
+                db.session.commit()
+
+            return jsonify({'message': 'Payment completed successfully'}), 200
+        except Exception as err:
+            logging.error(err)
+            return jsonify({'error': 'Failed to complete payment'}), 500
     @app.route("/cancel_payment/<payment_id>", methods=["POST"], endpoint="cancel_payment")
     @jwt_required()
     def cancel_payment(payment_id):

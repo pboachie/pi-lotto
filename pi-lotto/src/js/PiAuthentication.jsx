@@ -1,13 +1,10 @@
 // PiAuthentication.js
-import React, { useState } from 'react';
+import React from 'react';
 import axios from 'axios';
 import '../css/PiAuthentication.css';
 
-function PiAuthentication({ onAuthentication }) {
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-
+function PiAuthentication({ onAuthentication, isAuthenticated }) {
   const handleAuthentication = async () => {
-    setIsAuthenticating(true);
     try {
       const scopes = ['username', 'payments', 'wallet_address'];
       const Pi = window.Pi;
@@ -17,8 +14,8 @@ function PiAuthentication({ onAuthentication }) {
       console.error('Authentication failed', err);
       onAuthentication(false, null);
     }
-    setIsAuthenticating(false);
   };
+
 
   const signInUser = async (authResult) => {
     try {
@@ -63,11 +60,11 @@ function PiAuthentication({ onAuthentication }) {
       <div className="content">
         <h1 className="title">Pi-Lotto</h1>
         <button
-          className={`auth-button ${isAuthenticating ? 'authenticating' : ''}`}
+          className={`auth-button ${isAuthenticated ? 'authenticated' : ''}`}
           onClick={handleAuthentication}
-          disabled={isAuthenticating}
+          disabled={isAuthenticated}
         >
-          {isAuthenticating ? 'Authenticating...' : 'Login with Pi Network'}
+          {isAuthenticated ? 'Authenticated' : 'Login with Pi Network'}
         </button>
       </div>
     </div>

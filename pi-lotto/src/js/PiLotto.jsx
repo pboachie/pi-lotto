@@ -3,6 +3,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import Lotto from '../js/Lotto';
 import PiAuthentication from '../js/PiAuthentication';
 import SideMenu from '../js/SideMenu';
+import PiDeposit from '../js/PiDeposit';
+
 import '../css/PiLotto.css';
 import axios from 'axios';
 import { FaBars, FaUser } from 'react-icons/fa';
@@ -16,6 +18,7 @@ function PiLotto() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isDepositVisible, setIsDepositVisible] = useState(false);
   const userIconRef = useRef(null);
 
   useEffect(() => {
@@ -97,8 +100,7 @@ function PiLotto() {
   };
 
   const handleDeposit = () => {
-    // Implement deposit functionality
-    console.log('Deposit clicked');
+    setIsDepositVisible(true);
   };
 
   const handleWithdraw = () => {
@@ -107,13 +109,35 @@ function PiLotto() {
   };
 
   const handleLogout = () => {
-    // Implement logout functionality
-    console.log('Logout clicked');
+    // Clear the access token from the local storage
+    localStorage.removeItem('@pi-lotto:access_token');
+
+    // Reset the user state
+    setIsAuthenticated(false);
+    setUser(null);
+    setUserBalance(parseFloat(0.0));
+
+    // Close the user menu
+    setIsUserMenuOpen(false);
+
+    // Close the side menu
+    setIsSideMenuOpen(false);
+
+    // Reset the selected game
+    setSelectedGame(null);
+
+    // reset the deposit visibility
+    setIsDepositVisible(false);
+
+    alert('You have been logged out.');
   };
 
   const renderMainContent = () => {
     if (!isAuthenticated) {
-      return <PiAuthentication onAuthentication={handleAuthentication} />;
+      return <PiAuthentication
+        onAuthentication={handleAuthentication}
+        isAuthenticated={isAuthenticated}
+      />;
     }
 
     if (isLoading) {
@@ -122,6 +146,10 @@ function PiLotto() {
 
     if (selectedGame === 'lotto') {
       return <Lotto />;
+    }
+
+    if (isDepositVisible) {
+      return <PiDeposit onClose={() => setIsDepositVisible(false)} isAuthenticated={isAuthenticated} />
     }
 
     return (
