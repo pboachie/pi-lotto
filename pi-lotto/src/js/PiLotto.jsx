@@ -1,21 +1,22 @@
 // PiLotto.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Lotto from '../js/Lotto';
 import PiAuthentication from '../js/PiAuthentication';
 import SideMenu from '../js/SideMenu';
 import '../css/PiLotto.css';
 import axios from 'axios';
-import { FaBars } from 'react-icons/fa';
+import { FaBars, FaUser } from 'react-icons/fa';
 
 function PiLotto() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  // const [lottoPool, setLottoPool] = useState(0);
-  const [userBalance, setUserBalance] = useState(0);
+  const [userBalance, setUserBalance] = useState(parseFloat(0.0));
   const [selectedGame, setSelectedGame] = useState(null);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userIconRef = useRef(null);
 
   useEffect(() => {
     const Pi = window.Pi;
@@ -24,7 +25,6 @@ function PiLotto() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      // fetchLottoPool();
       fetchUserBalance();
     }
   }, [isAuthenticated, user]);
@@ -44,27 +44,6 @@ function PiLotto() {
     setUser(userInfo);
   };
 
-  // const fetchLottoPool = async () => {
-  //   try {
-  //     const response = await axios.get('http://127.0.0.1:5000/api/lotto-pool', {
-  //       headers: {
-  //         Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
-  //       },
-  //     });
-
-  //     if (!response.data.balance) {
-  //       setLottoPool(0);
-  //       alert(response.data.error);
-  //       return;
-  //     }
-
-  //     const lottoPool = response.data.balance;
-  //     setLottoPool(lottoPool);
-  //   } catch (error) {
-  //     alert('Server currently under maintenance. Please try again later.');
-  //   }
-  // };
-
   const fetchUserBalance = async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/user-balance', {
@@ -73,11 +52,10 @@ function PiLotto() {
         },
       });
 
-      // if response is not 200, return false
       const status = response.status === 200;
 
       if (!status) {
-        setUserBalance(0);
+        setUserBalance(parseFloat(0.0));
         alert(response.data.error);
         return;
       }
@@ -93,11 +71,44 @@ function PiLotto() {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-    }, 2000); // Simulating loading delay
+    }, 2000);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userIconRef.current && !userIconRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const toggleSideMenu = () => {
     setIsSideMenuOpen(!isSideMenuOpen);
+  };
+
+  const toggleUserMenu = () => {
+    setIsUserMenuOpen(!isUserMenuOpen);
+  };
+
+  const handleDeposit = () => {
+    // Implement deposit functionality
+    console.log('Deposit clicked');
+  };
+
+  const handleWithdraw = () => {
+    // Implement withdraw functionality
+    console.log('Withdraw clicked');
+  };
+
+  const handleLogout = () => {
+    // Implement logout functionality
+    console.log('Logout clicked');
   };
 
   const renderMainContent = () => {
@@ -129,10 +140,22 @@ function PiLotto() {
         </button>
         <h1>Pi-Lotto</h1>
         {isAuthenticated && (
-          <div className="user-info">
+        <div className="user-info">
+          <div className="user-details">
             <span>Welcome, {user.username}</span>
-            <span>Balance: {userBalance} Test-π</span>
+            <span>Balance: {userBalance} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</span>
           </div>
+          <div className={`user-icon ${isUserMenuOpen ? 'active' : ''}`} onClick={toggleUserMenu} ref={userIconRef}>
+            <FaUser />
+            {isUserMenuOpen && (
+              <div className="user-menu">
+                <button onClick={handleDeposit}>Deposit</button>
+                <button onClick={handleWithdraw}>Withdraw</button>
+                <button onClick={handleLogout}>Logout</button>
+              </div>
+            )}
+          </div>
+        </div>
         )}
       </header>
       {isAuthenticated && (
