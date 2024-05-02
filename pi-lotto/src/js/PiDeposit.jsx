@@ -1,10 +1,13 @@
+// PiDeposit.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
 import '../css/PiDeposit.css';
 
-const PiDeposit = ({ onClose, isAuthenticated }) => {
+const PiDeposit = ({ onClose, isAuthenticated, userBalance, setUserBalance }) => {
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
 
   const handleDeposit = async () => {
     if (!isAuthenticated) {
@@ -14,9 +17,32 @@ const PiDeposit = ({ onClose, isAuthenticated }) => {
 
     const parsedAmount = parseFloat(amount);
     if (parsedAmount < 0.25) {
-      console.error('Amount must be at least 0.25');
+      setErrorMessage('Amount must be at least 0.25');
+      setTimeout(() => {
+        setErrorMessage('');
+      }, 3000); // Clear the error message after 3 seconds
       return;
     }
+
+    const fetchUserBalance = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/user-balance', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+          },
+        });
+
+        if (response.status === 200) {
+          return response.data.balance;
+        } else {
+          console.error('Failed to fetch user balance:', response.data.error);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error fetching user balance:', error);
+        return null;
+      }
+    };
 
     const transID = Math.floor(Math.random() * 1000000000);
 
@@ -27,25 +53,36 @@ const PiDeposit = ({ onClose, isAuthenticated }) => {
         metadata: {
           locTransID: transID,
           dateCreated: new Date().toISOString(),
+          transType: 'deposit'
         },
       };
 
       const callbacks = {
         onReadyForServerApproval: async (paymentId) => {
-          const paymentData = {
-            paymentId,
-            amount: parsedAmount,
-            memo: 'Deposit to Pi-Lotto',
-            metadata: {
-              locTransID: transID,
-              dateCreated: new Date().toISOString(),
-            },
-          };
 
           try {
+
+            const header = {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + localStorage.getItem('@pi-lotto:access_token')
+            }
+
+            console.log()
+
             // Send the payment data to the backend for server-side approval
-            const response = await axios.post('http://localhost:5000/api/approve_payment', paymentData);
-            console.log('Payment approved:', response);
+            const response = await axios.post('http://127.0.0.1:5000/approve_payment/'+ paymentId, { paymentData }, { headers: header });
+
+            if (response.status !== 200) {
+              console.error('Payment approval error:', response.data.error);
+              setPaymentStatus('ERROR: ' + response.data.error);
+              return false;
+            }
+
+            // const response = await window.Pi.getPayment(paymentId);
+            console.log('Payment approved:', response.data);
+            setPaymentStatus('Completing payment...');
+            return true;
+
           } catch (error) {
             console.error('Payment approval error:', error);
             setPaymentStatus('error');
@@ -54,9 +91,38 @@ const PiDeposit = ({ onClose, isAuthenticated }) => {
         onReadyForServerCompletion: async (paymentId, txid) => {
           try {
             // Send the paymentId and txid to the backend for server-side completion
-            const response = await axios.post('http://localhost:5000/api/complete_payment', { paymentId, txid });
-            console.log('Payment completed:', response);
-            setPaymentStatus('completed');
+            const header = {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + localStorage.getItem('@pi-lotto:access_token')
+            }
+
+            console.log('Payment ID:', paymentId);
+            console.log('TXID:', txid);
+
+            const response = await axios.post('http://127.0.0.1:5000/complete_payment/'+ paymentId, { paymentId, txid }, { headers: header });
+
+            if (response.status !== 200) {
+              console.error('Payment completion error:', response.data.error);
+              setPaymentStatus('ERROR: ' + response.data.error);
+
+              // Cancel the payment
+              await window.Pi.cancelPayment(paymentId);
+              return false;
+            }
+
+            console.log('Payment completed:', response.data);
+            setPaymentStatus('Payment Transfer Complete!');
+
+            // Update the user balance
+            const updatedBalance = await fetchUserBalance();
+            if (updatedBalance !== null) {
+              setUserBalance(updatedBalance);
+            }
+
+            // Clear form input
+            setAmount('');
+
+            return true;
           } catch (error) {
             console.error('Payment completion error:', error);
             setPaymentStatus('error');
@@ -64,7 +130,7 @@ const PiDeposit = ({ onClose, isAuthenticated }) => {
         },
         onCancel: (paymentId) => {
           console.log('Payment cancelled:', paymentId);
-          setPaymentStatus('cancelled');
+          setPaymentStatus('Payment cancelled');
         },
         onError: (error, payment) => {
           console.error('Payment error:', payment);
@@ -73,8 +139,8 @@ const PiDeposit = ({ onClose, isAuthenticated }) => {
         },
       };
 
-      const Pi = window.Pi;
-      Pi.createPayment(paymentData, callbacks);
+      const paymentId = await window.Pi.createPayment(paymentData, callbacks);
+      console.log('Payment created with ID:', paymentId);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -96,6 +162,7 @@ const PiDeposit = ({ onClose, isAuthenticated }) => {
           Deposit
         </button>
       </div>
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
       {paymentStatus && <p className="payment-status">Payment Status: {paymentStatus}</p>}
       <button className="close-button" onClick={onClose}>
         Close
