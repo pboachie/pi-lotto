@@ -137,6 +137,7 @@ function PiLotto() {
       return <PiAuthentication
         onAuthentication={handleAuthentication}
         isAuthenticated={isAuthenticated}
+        onBalanceUpdate={fetchUserBalance}
       />;
     }
 
@@ -149,7 +150,9 @@ function PiLotto() {
     }
 
     if (isDepositVisible) {
-      return <PiDeposit onClose={() => setIsDepositVisible(false)} isAuthenticated={isAuthenticated} />
+      return <PiDeposit onClose={() => setIsDepositVisible(false)} isAuthenticated={isAuthenticated} userBalance={userBalance} setUserBalance={setUserBalance} />
+
+
     }
 
     return (
