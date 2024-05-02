@@ -7,7 +7,7 @@ import uuid
 import json
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from src.pi_python import PiNetwork
@@ -15,7 +15,8 @@ from src.pi_python import PiNetwork
 
 def create_app(config_path):
     app = Flask(__name__)
-    CORS(app)  # Enable CORS for all routes and origins
+    jwt = JWTManager(app)
+    CORS(app)
 
     # Load configuration from config.yml
     with open(config_path, 'r') as config_file:
@@ -43,7 +44,6 @@ def create_app(config_path):
 
     # JWT Configuration
     app.config["JWT_SECRET_KEY"] = config['jwt']['secret_key']
-    jwt = JWTManager(app)
 
     # Stellar Network Configuration
     pi_network = PiNetwork()
@@ -86,15 +86,24 @@ def create_app(config_path):
 
     # Transaction model
     class Transaction(db.Model):
-        id = db.Column(db.Integer, primary_key=True)
+        id = db.Column(db.String(100), primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-        wallet_id = db.Column(db.Integer, db.ForeignKey('wallet.id'), nullable=False)
+        wallet_id = db.Column(db.Integer, db.ForeignKey('wallet.id'), nullable=True)
         amount = db.Column(db.Float, nullable=False)
         transaction_type = db.Column(db.String(20), nullable=False)  # 'deposit' or 'withdrawal'
-        transaction_id = db.Column(db.String(100), unique=True, nullable=False)
+        memo = db.Column(db.String(100), nullable=False)
         status = db.Column(db.String(20), nullable=False)
+        reference_id = db.Column(db.String(100), nullable=True)
+        transaction_id = db.Column(db.String(100), nullable=True)
         dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
         dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    # Transaction Log model
+    class TransactionLog(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        transaction_id = db.Column(db.String(100), db.ForeignKey('transaction.id'), nullable=False)
+        log_message = db.Column(db.String(255), nullable=False)
+        log_timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     # Account Transaction model
     class AccountTransaction(db.Model):
@@ -107,10 +116,11 @@ def create_app(config_path):
 
     # Payment model
     class Payment(db.Model):
-        id = db.Column(db.Integer, primary_key=True)
+        id = db.Column(db.String(100), primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
         amount = db.Column(db.Float, nullable=False)
-        transaction_id = db.Column(db.String(100), unique=True, nullable=False)
+        memo = db.Column(db.String(100), nullable=False)
+        transaction_id = db.Column(db.String(100), nullable=True)
         status = db.Column(db.String(20), nullable=False)
 
     # Lotto stats model
@@ -173,7 +183,6 @@ def create_app(config_path):
             return {'error': 'end_time is required'}, 400
 
         try:
-
             print(data['end_time'])
             # check if the end_time is a valid datetime object
             end_time = datetime.fromisoformat(data['end_time'])
@@ -190,87 +199,97 @@ def create_app(config_path):
         return end_time, 200
 
     def update_user_balance(user_id, transaction_amount, transaction_type):
-        user = User.query.get(user_id)
-        if user:
-            if transaction_type == 'deposit':
-                user.balance += transaction_amount
-            elif transaction_type == 'withdrawal':
-                user.balance -= transaction_amount
-            elif transaction_type == 'game_entry':
-                user.balance -= transaction_amount
-            elif transaction_type == 'game_winnings':
-                user.balance += transaction_amount
-            elif transaction_type == 'lotto_winnings':
-                user.balance += transaction_amount
-            elif transaction_type == 'lotto_entry':
-                user.balance -= transaction_amount
-            else:
-                return jsonify({'error': 'Invalid transaction type'}), 400
-
-            db.session.commit()
-            return jsonify({'message': 'User balance updated successfully'}), 200
-
-    def create_account_transaction(user_id, transaction_type, amount, reference_id=None):
-        transaction = AccountTransaction(
-            user_id=user_id,
-            transaction_type=transaction_type,
-            amount=amount,
-            reference_id=reference_id
-        )
-        db.session.add(transaction)
-        db.session.commit()
-
-        balanceIsUpdated = update_user_balance(user_id, amount, transaction_type)
-
-        if balanceIsUpdated.status_code != 200:
-            logging.error(balanceIsUpdated.json())
-            db.session.refresh(transaction)
-            db.session.delete(transaction)
-            return False
-        else:
-            return True
-
-    # Function to approve a payment to get the txid
-    def approve_payment(payment_id):
         try:
-            user_id = get_jwt_identity()
-            data = request.get_json()
-            payment_id = data["paymentId"]
+            user = User.query.get(user_id)
+            if user:
 
-            # Approve the payment using the Python SDK
-            pi_network.get_payment(payment_id)
+                print("Transaction type: ", transaction_type)
 
-            return jsonify({'message': 'Payment approved successfully'}), 200
-        except Exception as err:
-            logging.error(err)
-            return jsonify({'error': 'Failed to approve payment'}), 500
+                if transaction_type == 'deposit':
+                    user.balance += transaction_amount
+                elif transaction_type == 'withdrawal':
+                    user.balance -= transaction_amount
+                elif transaction_type == 'game_entry':
+                    user.balance -= transaction_amount
+                elif transaction_type == 'game_winnings':
+                    user.balance += transaction_amount
+                elif transaction_type == 'lotto_winnings':
+                    user.balance += transaction_amount
+                elif transaction_type == 'lotto_entry':
+                    user.balance -= transaction_amount
+                else:
+                    raise ValueError('Invalid transaction type')
 
-    # Function to create a payment
-    def create_payment(data={}):
-        data = request.get_json()
-        payment_data = {
-            "payment": {
-                "amount": data["amount"],
-                "memo": data["memo"],
-                "metadata": data["metadata"],
-                "uid": data["uid"]
-            }
-        }
-        headers = {
-            "Authorization": f"Key {app.config['SERVER_API_KEY']}",
-            "Content-Type": "application/json"
-        }
-        response = requests.post(f"{app.config['BASE_URL']}/payments", json=payment_data, headers=headers)
+                db.session.commit()
+                
+                return True
+            else:
+                raise ValueError('User not found')
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error updating user balance: {str(e)}")
+            return False
 
-        print("Payment response: ", response.json())
-        return jsonify(response.json())
+    def create_transaction_log(transaction_id, log_message):
+        try:
+            log_entry = TransactionLog(transaction_id=transaction_id, log_message=log_message)
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error creating transaction log: {str(e)}")
 
-    @app.after_request
-    def after_request(response):
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        return response
+    def create_transaction(user_id, ref_id, wallet_id, amount, transaction_type, memo, status, id=None):
+        try:
+            if id is None:
+                transaction_id = str(uuid.uuid4())
+            else:
+                transaction_id = id
 
+            transaction = Transaction(
+                id=transaction_id,
+                user_id=user_id,
+                reference_id=ref_id,
+                wallet_id=wallet_id,
+                amount=amount,
+                transaction_type=transaction_type,
+                memo=memo,
+                status=status
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            create_transaction_log(transaction_id, f"Transaction created: {transaction_id}")
+            return transaction
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error creating transaction: {str(e)}")
+            return None
+
+    def complete_transaction(transaction_id, txid):
+        try:
+            transaction = Transaction.query.get(transaction_id)
+            if transaction:
+                transaction.transaction_id = txid
+                transaction.status = 'completed'
+
+                # Create payment record
+                payment = Payment(id=transaction_id, user_id=transaction.user_id, amount=transaction.amount, memo=transaction.memo, transaction_id=txid, status='completed')
+                db.session.add(payment)
+
+                db.session.commit()
+                create_transaction_log(transaction_id, f"Transaction completed: {transaction_id}")
+
+
+                if update_user_balance(transaction.user_id, transaction.amount, transaction.transaction_type):
+                    return True
+                else:
+                    raise ValueError('Failed to update user balance')
+            else:
+                raise ValueError('Transaction not found')
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error completing transaction: {str(e)}")
+            return False
 
     @app.route("/api/create_deposit", methods=["POST"], endpoint="create_deposit")
     @jwt_required()
@@ -307,23 +326,27 @@ def create_app(config_path):
             # Make sure the amount is in the correct format and a float
             amount = float(amount)
 
-            data = {
-                "amount": amount,
-                "memo": memo,
-                "metadata": metadata,
-                "uid": uid
+            payment_data = {
+                "payment": {
+                    "amount": amount,
+                    "memo": memo,
+                    "metadata": metadata,
+                    "uid": uid
+                }
             }
 
-            # Create a payment using the internal API
-            response = create_payment(data)
+            headers = {
+                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+
+            response = requests.post(f"{app.config['BASE_URL']}/payments", json=payment_data, headers=headers)
 
             # get txid from the response
             txid = response.json().get('transaction', {}).get('txid')
 
-            print("Transaction ID: ", txid)
-
             # Approve the payment using internal API
-            response = approve_payment(txid)
+            response = approve_payment(deposit_id)
             return jsonify(response.json())
 
         except requests.exceptions.RequestException as err:
@@ -363,19 +386,22 @@ def create_app(config_path):
         payment = request.json['payment']
         payment_id = payment['identifier']
         txid = payment.get('transaction', {}).get('txid')
+        tx_url = payment.get('transaction', {}).get('_link')
 
         # TODO: Verify the payment details (e.g., amount, memo) against your database
         # TODO: Mark the order as paid in your database if the payment is valid
 
         try:
             # Let Pi Servers know that the payment is completed
-            pi_network.complete_payment(payment_id, txid)
+            headers = {'Authorization': f"Key {app.config['SERVER_API_KEY']}"}
+            payload = {'txid': txid}
+            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json=payload, headers=headers)
+            response.raise_for_status()
 
             return jsonify({'message': f'Handled the incomplete payment {payment_id}'}), 200
-        except Exception as err:
+        except requests.exceptions.RequestException as err:
             logging.error(err)
             return jsonify({'error': 'Failed to complete the payment'}), 500
-
 
     @app.route("/api/lotto-pool", methods=["GET"])
     @jwt_required()
@@ -384,7 +410,7 @@ def create_app(config_path):
             # get the current balance of the app wallet
             balance = pi_network.get_balance()
 
-            # Check if the balance is not None, else return maintanance message
+            # Check if the balance is not None, else return maintenance message
             if balance is None:
                 return jsonify({'error': 'The system is currently under maintenance. Please try again later'}), 503
 
@@ -446,7 +472,6 @@ def create_app(config_path):
         if game is None:
             return jsonify({'error': 'Game not found'}), 404
 
-
         # Validate the ticket price by checking with the API
         try:
             ticket_details = get_ticket_details()
@@ -487,73 +512,140 @@ def create_app(config_path):
 
         return jsonify({'message': 'Ticket submitted successfully'}), 200
 
-    @app.route("/get_payment/<payment_id>", methods=["GET"], endpoint="get_payment")
+    @app.route("/create_payment", methods=["POST"], endpoint="create_payment")
     @jwt_required()
+    def create_payment():
+        data = request.get_json()
+        payment_data = {
+            "payment": {
+                "amount": data["amount"],
+                "memo": data["memo"],
+                "metadata": data["metadata"],
+                "uid": data["uid"]
+            }
+        }
+        headers = {
+            "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+            "Content-Type": "application/json"
+        }
+        response = requests.post(f"{app.config['BASE_URL']}/payments", json=payment_data, headers=headers)
+        return jsonify(response.json())
+
+    @app.route("/get_payment/<payment_id>", methods=["GET"], endpoint="get_payment")
     def get_payment(payment_id):
-        user_id = get_jwt_identity()
-        user_id = user_id["uid"]
-
-        # Check if the user exists
-        user = User.query.filter_by(uid=user_id).first()
-        if user is None:
-            print("User not found")
-            return jsonify({'error': 'User not found'}), 404
-
-        # Create payment in database if it doesn't exist
-        payment = Payment.query.filter_by(id=payment_id).first()
-        if payment is None:
-            new_payment = Payment(id=payment_id, user_id=user.id, amount=0, transaction_id="", status="pending")
-            db.session.add(new_payment)
-            db.session.commit()
-        else:
-            # Payment exists, return error
-            return jsonify({'error': 'Payment already exists'}), 400
-
         headers = {
             "Authorization": f"Key {app.config['SERVER_API_KEY']}"
         }
         response = requests.get(f"{app.config['BASE_URL']}/payments/{payment_id}", headers=headers)
         return jsonify(response.json())
 
+    @app.route("/approve_payment/<payment_id>", methods=["POST"], endpoint="approve_payment")
+    def approve_payment(payment_id):
+        # Validate userID and check if the user has the required scope
+        verify_jwt_in_request()
+        user_id = get_jwt_identity()
+        user = User.query.filter_by(uid=user_id).first()
+
+        if user is None:
+            print("User not found")
+            return jsonify({'error': 'User not found'}), 404
+
+        user_scope = UserScopes.query.filter_by(user_id=user.id, scope='payments').first()
+        if user_scope is None or not user_scope.active:
+            return jsonify({'error': 'Unauthorized'}), 401
+
+        # Get payment
+        payment = Transaction.query.filter_by(id=payment_id).first()
+
+        # If payment is not found, create it. If completed, return an error
+        if payment is None:
+            data = request.get_json()
+            pl_cost = data['paymentData']['amount']
+
+            # approveStatus = pi_network.get_payment(payment_id)
+            headers = {
+                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+            response = requests.post(f"{app.config['BASE_URL']}/payments/" + payment_id + "/approve/", headers=headers)
+            print("Payment response: ", response.content)
+
+            # Save contents to json file localy using payment_id as filename
+            with open(f"{payment_id}_approval.json", "w") as f:
+                json.dump(response.json(), f)
+
+            # if response status is not 200, return an error
+            if response.status_code != 200:
+                print("Failed to approve payment")
+                return jsonify({'error': 'Failed to approve payment'}), 500
+
+            # Create a transaction record
+            transaction = create_transaction(user_id=user.id, ref_id=None, wallet_id=None, amount=pl_cost, transaction_type='deposit', memo='Uni-Games Ticket Purchase', status='pending', id=payment_id)
+
+            if transaction is None:
+                return jsonify({'error': 'Failed to create transaction'}), 500
+
+            return jsonify(response.json())
+
+
+        elif payment.status == 'completed':
+            return jsonify({'error': 'Payment already completed'}), 400
+
     @app.route("/complete_payment/<payment_id>", methods=["POST"], endpoint="complete_payment")
-    @jwt_required()
     def complete_payment(payment_id):
         try:
+            verify_jwt_in_request()
             user_id = get_jwt_identity()
+
+            # Check if user exists
+            user = User.query.filter_by(uid=user_id).first()
+            if user is None:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Check if the payment exists and is pending
+            payment = Transaction.query.filter_by(id=payment_id, status="pending").first()
+            if payment is None:
+                print("Payment not found")
+                return jsonify({'error': 'Payment not found or already completed'}), 404
+
             data = request.get_json()
             payment_id = data["paymentId"]
             txid = data["txid"]
 
+            print("Payment ID: ", payment_id)
+            print("Transaction ID: ", txid)
+
+            # Check if the payment ID and transaction ID are provided
+            if payment_id is None or txid is None:
+                return jsonify({'error': 'Payment ID and transaction ID are required'}), 400
+
             # Complete the payment using the Python SDK
-            pi_network.complete_payment(payment_id, txid)
+            # completeStatus = pi_network.complete_payment(payment_id, txid)
+            headers = {
+                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
 
-            # Update the payment status in the database
-            payment = Payment.query.filter_by(id=payment_id).first()
-            if payment:
-                payment.status = "completed"
-                payment.transaction_id = txid
-                db.session.commit()
+            print("Complete payment response: ", response.content)
 
-                # Create an account transaction
-                new_transaction = AccountTransaction(
-                    user_id=user_id,
-                    transaction_type="deposit",
-                    amount=payment.amount,
-                    reference_id=payment.id
-                )
+            # Save contents to json file localy using payment_id as filename
+            with open(f"{payment_id}_confirmed.json", "w") as f:
+                json.dump(response.json(), f)
 
-                if new_transaction is None:
-                    # Rollback the payment status
-                    payment.status = "pending"
-                    db.session.commit()
-                    return jsonify({'error': 'Failed to create account transaction'}), 500
+            if response.status_code != 200:
+                return jsonify({'error': 'Failed to complete payment'}), 500
 
-                db.session.commit()
+            # Complete the transaction
+            if not complete_transaction(payment.id, txid):
+                return jsonify({'error': 'Failed to complete transaction'}), 500
 
+            db.session.commit()
             return jsonify({'message': 'Payment completed successfully'}), 200
         except Exception as err:
             logging.error(err)
             return jsonify({'error': 'Failed to complete payment'}), 500
+
     @app.route("/cancel_payment/<payment_id>", methods=["POST"], endpoint="cancel_payment")
     @jwt_required()
     def cancel_payment(payment_id):
@@ -563,33 +655,127 @@ def create_app(config_path):
         response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/cancel", headers=headers)
         return jsonify(response.json())
 
-    @app.route("/incomplete_server_payments", methods=["GET"], endpoint="incomplete_server_payments")
-    @jwt_required()
-    def incomplete_server_payments():
-        headers = {
-            "Authorization": f"Key {app.config['SERVER_API_KEY']}"
-        }
-        response = requests.get(f"{app.config['BASE_URL']}/payments/incomplete_server_payments", headers=headers)
-        return jsonify(response.json())
+    @app.route("/incomplete_server_payment/<payment_id>", methods=["POST"], endpoint="incomplete_server_payment")
+    def incomplete_server_payment(payment_id):
 
+        # Get post data
+        data = request.get_json()
+
+
+        payment_id = data['payment']['identifier'] if 'identifier' in data['payment'] else None
+        amount = data['payment']['amount'] if 'amount' in data['payment'] else 0
+        user_id = data['payment']['user_uid'] if 'user_uid' in data['payment'] else None
+        memo = data['payment']['memo'] if 'memo' in data['payment'] else None
+        trans_type=None
+        txid=None
+        try:
+            trans_type = data['payment']['metadata']['transType']
+        except KeyError:
+            trans_type="deposit"
+
+        try:
+            txid = data['payment']['transaction']['txid']
+        except KeyError:
+            txid=None
+
+        statuses = data['payment']['status'] if 'status' in data['payment'] else None
+
+        # Check if the payment exists
+        payment = Transaction.query.filter_by(id=payment_id).first()
+
+        print(payment)
+
+        # if payment is not found, create it
+        if payment is None:
+            transaction = create_transaction(user_id=user_id, ref_id=None, wallet_id=None, amount=amount, transaction_type=trans_type, memo=memo, status='pending', id=payment_id)
+
+            # Check if the transaction was created successfully
+            if transaction is None:
+                return jsonify({'error': 'Failed to create transaction'}), 500
+
+        # Check if payment status is completed in the database
+        if payment.status == 'completed':
+            headers = {
+                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+
+            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
+
+            print("Complete payment response: ", response.content)
+
+            # Save contents to json file localy using payment_id as filename
+            with open(f"{payment_id}_confirmed.json", "w") as f:
+                json.dump(response.json(), f)
+
+            if response.status_code != 200:
+                return jsonify({'error': 'Failed to complete payment'}), 500
+
+
+        # Update status to completed if developer_approved and transaction_verified are true
+        if statuses['developer_approved'] and statuses['transaction_verified']:
+
+            headers = {
+                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+
+            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
+
+            print("Complete payment response: ", response.content)
+
+            # Save contents to json file localy using payment_id as filename
+            with open(f"{payment_id}_confirmed.json", "w") as f:
+                json.dump(response.json(), f)
+
+            if response.status_code != 200:
+                return jsonify({'error': 'Failed to complete payment'}), 500
+
+            # Complete the transaction
+            if not complete_transaction(payment.id, txid):
+                return jsonify({'error': 'Failed to complete transaction'}), 500
+
+        # Return success message
+        return jsonify({'message': 'Payment completed successfully'}), 200
     @app.route("/api/ticket-details", methods=["GET"])
     @jwt_required()
     def get_ticket_details():
-
         try:
-            # Divide the base fee by 10000000 to get the actual fee
-            baseFee = int(pi_network.fee) / 10000000
+            user_id = get_jwt_identity()
+
+            user = User.query.filter_by(uid=user_id).first()
+            if user is None:
+                return jsonify({'error': 'User not found'}), 404
+
+            try:
+                # Divide the base fee by 10000000 to get the actual fee
+                baseFee = int(pi_network.fee) / 10000000
+            except requests.exceptions.RequestException as err:
+                logging.error(err)
+                baseFee = 0.01
+
+            # TicketID randomly generated
+            ticketID = str(uuid.uuid4())
+
+            ticket_details = {
+                "ticketPrice": float(2.00),
+                "baseFee": float(baseFee),
+                "serviceFee": float(0.0125),
+                "txID": str(ticketID)
+            }
+
+            # Get total cost
+            total_cost = ticket_details['ticketPrice'] + ticket_details['baseFee'] + ticket_details['serviceFee']
+
+             # Create a transaction record
+            transaction = create_transaction(user_id=user.id, ref_id=None, wallet_id=None, amount=total_cost, transaction_type='lotto_entry', memo='Uni-Games Ticket Purchase', status='pending', id=ticketID)
+            if transaction is None:
+                return jsonify({'error': 'Failed to create transaction'}), 500
+
+            return jsonify(ticket_details)
         except requests.exceptions.RequestException as err:
             logging.error(err)
-            baseFee = 0.01
-
-        # TODO: Hardcoded values should come from config
-        ticket_details = {
-            "ticketPrice": 2.00,
-            "baseFee": float(baseFee),
-            "serviceFee": 0.0125
-        }
-        return jsonify(ticket_details)
+            return jsonify({'error': 'Failed to fetch ticket details'}), 500
 
     @app.route('/admin/create-game', methods=['POST'])
     @jwt_required()
@@ -663,10 +849,11 @@ def create_app(config_path):
 
         new_user_game = UserGame(user_id=user_id, game_id=game.id)
         db.session.add(new_user_game)
+
         game.num_players += 1
         db.session.commit()
 
-        return jsonify({'message': 'User joined the game successfully'}), 200
+        return jsonify({'message': 'User joined game successfully'}), 200
 
     @app.route('/game-details/<game_id>', methods=['GET'])
     @jwt_required()
@@ -705,6 +892,14 @@ def create_app(config_path):
             game_details.append(game_detail)
 
         return jsonify(game_details), 200
+
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
     return app, db
 
