@@ -3,7 +3,7 @@ import React from 'react';
 import axios from 'axios';
 import '../css/PiAuthentication.css';
 
-function PiAuthentication({ onAuthentication, isAuthenticated }) {
+function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }) {
   const handleAuthentication = async () => {
     try {
       const scopes = ['username', 'payments', 'wallet_address'];
@@ -46,10 +46,33 @@ function PiAuthentication({ onAuthentication, isAuthenticated }) {
   };
 
   const onIncompletePaymentFound = async (payment) => {
-    console.log('Incomplete payment found:', payment);
     try {
-      const response = await axios.post('/incomplete', { payment });
-      console.log(response.data);
+      // Get paymentId
+      const paymentId = payment.identifier;
+      const response = await axios.post('http://127.0.0.1:5000/incomplete_server_payment/'+ paymentId, { payment });
+
+      if (response.status !== 200) {
+        console.error('Incomplete payment error:', response.data.error);
+        return;
+      }
+
+      // Get and update user balance
+      console.log('Incomplete payment found:', response.data);
+
+      // Fetch the updated user balance from the server
+      const balanceResponse = await axios.get('http://127.0.0.1:5000/api/user-balance', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+        },
+      });
+
+      if (balanceResponse.status === 200) {
+        const updatedBalance = balanceResponse.data.balance;
+        // Update the user balance in the parent component (PiLotto)
+        onBalanceUpdate(updatedBalance);
+      } else {
+        console.error('Failed to fetch user balance:', balanceResponse.data.error);
+      }
     } catch (error) {
       console.error('Incomplete payment error:', error);
     }
