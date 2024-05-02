@@ -57,3 +57,21 @@
     border-radius: 4px;
     cursor: pointer;
   }
+
+  .error-message {
+    color: red;
+    margin-top: 8px;
+    animation: fadeOut 3s ease-in-out;
+  }
+
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
