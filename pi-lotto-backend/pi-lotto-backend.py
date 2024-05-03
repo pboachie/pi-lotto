@@ -221,7 +221,7 @@ def create_app(config_path):
                     raise ValueError('Invalid transaction type')
 
                 db.session.commit()
-                
+
                 return True
             else:
                 raise ValueError('User not found')
@@ -562,6 +562,10 @@ def create_app(config_path):
             data = request.get_json()
             pl_cost = data['paymentData']['amount']
 
+            # If amount is not provided or is less than 0, return an error
+            if pl_cost is None or pl_cost <= 0:
+                return jsonify({'error': 'Invalid amount'}), 400
+
             # approveStatus = pi_network.get_payment(payment_id)
             headers = {
                 "Authorization": f"Key {app.config['SERVER_API_KEY']}",
@@ -590,6 +594,8 @@ def create_app(config_path):
 
         elif payment.status == 'completed':
             return jsonify({'error': 'Payment already completed'}), 400
+
+        # Need to handle when payment is panding
 
     @app.route("/complete_payment/<payment_id>", methods=["POST"], endpoint="complete_payment")
     def complete_payment(payment_id):

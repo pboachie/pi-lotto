@@ -25,7 +25,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
       }
 
       // Fetch the access token from the server
-      const response = await axios.post('http://127.0.0.1:5000/signin', { authResult });
+      const response = await axios.post('http://localhost:5000/signin', { authResult });
 
 
       // Return false if status is not 200
@@ -49,7 +49,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
     try {
       // Get paymentId
       const paymentId = payment.identifier;
-      const response = await axios.post('http://127.0.0.1:5000/incomplete_server_payment/'+ paymentId, { payment });
+      const response = await axios.post('http://localhost:5000/incomplete_server_payment/'+ paymentId, { payment });
 
       if (response.status !== 200) {
         console.error('Incomplete payment error:', response.data.error);
@@ -60,7 +60,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
       console.log('Incomplete payment found:', response.data);
 
       // Fetch the updated user balance from the server
-      const balanceResponse = await axios.get('http://127.0.0.1:5000/api/user-balance', {
+      const balanceResponse = await axios.get('http://localhost:5000/api/user-balance', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
         },

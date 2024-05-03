@@ -18,7 +18,7 @@ function Lotto() {
 
   const fetchTicketDetails = async () => {
     try {
-      const response = await axios.get('http://127.0.0.1:5000/api/ticket-details', {
+      const response = await axios.get('http://localhost:5000/api/ticket-details', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
         },
