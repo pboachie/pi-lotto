@@ -1,11 +1,19 @@
 // SideMenu.js
 import React from 'react';
 import '../css/SideMenu.css';
-import { FaTimes } from 'react-icons/fa';
+import { FaTimes, FaHome } from 'react-icons/fa';
+import PiDeposit from './PiDeposit';
 
 function SideMenu({ isOpen, onGameClick, onClose }) {
   const handleGameClick = (game) => {
     onGameClick(game);
+    onClose();
+  };
+
+  const handleHomeClick = () => {
+    // Clear all components like deposit, lotto, etc dynamically
+
+    onGameClick(null);
     onClose();
   };
 
@@ -15,8 +23,13 @@ function SideMenu({ isOpen, onGameClick, onClose }) {
         <button className="close-btn" onClick={onClose}>
           <FaTimes />
         </button>
-        <h3>Available Games</h3>
+        <h3>Menu</h3>
         <ul>
+          <li>
+            <button onClick={handleHomeClick}>
+              <FaHome /> Home
+            </button>
+          </li>
           <li>
             <button onClick={() => handleGameClick('lotto')}>Pi Lotto</button>
           </li>
