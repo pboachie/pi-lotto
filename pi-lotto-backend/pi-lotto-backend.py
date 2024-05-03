@@ -5,6 +5,7 @@ import logging
 import requests
 import uuid
 import json
+import colorama
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
@@ -183,7 +184,6 @@ def create_app(config_path):
             return {'error': 'end_time is required'}, 400
 
         try:
-            print(data['end_time'])
             # check if the end_time is a valid datetime object
             end_time = datetime.fromisoformat(data['end_time'])
 
@@ -203,7 +203,7 @@ def create_app(config_path):
             user = User.query.get(user_id)
             if user:
 
-                print("Transaction type: ", transaction_type)
+                logging.info(colorama.Fore.GREEN + f"UPDATE: Updating user balance for user: {user.username} with transaction amount: {transaction_amount} and transaction type: {transaction_type}")
 
                 if transaction_type == 'deposit':
                     user.balance += transaction_amount
@@ -227,7 +227,7 @@ def create_app(config_path):
                 raise ValueError('User not found')
         except Exception as e:
             db.session.rollback()
-            logging.error(f"Error updating user balance: {str(e)}")
+            logging.error(colorama.Fore.RED + f"ERROR: Failed to update users balance. User ID: {user_id}. {str(e)}")
             return False
 
     def create_transaction_log(transaction_id, log_message):
@@ -375,6 +375,7 @@ def create_app(config_path):
             # Generate JWT token for the user
             jwt_token = create_access_token(identity=user.uid)
 
+            logging.info(colorama.Fore.GREEN + f"SIGNIN: User {user.username} signed in successfully")
             return jsonify({'access_token': jwt_token}), 200
         except requests.exceptions.RequestException as err:
             logging.error(err)
@@ -430,7 +431,7 @@ def create_app(config_path):
 
         # if debug mode is enabled, return the balance as 1000
         if app.config['DEBUG'] == True:
-            print("User balance: ", user.balance)
+            logging.info(colorama.Fore.YELLOW + f"FETCH: Fetching user balance for user: {user.username} with balance: {user.balance}")
 
         return jsonify({'balance': user.balance}), 200
 
@@ -547,7 +548,7 @@ def create_app(config_path):
         user = User.query.filter_by(uid=user_id).first()
 
         if user is None:
-            print("User not found")
+            logging.error(colorama.Fore.RED + f"ERROR: Approve payment failed. User not found")
             return jsonify({'error': 'User not found'}), 404
 
         user_scope = UserScopes.query.filter_by(user_id=user.id, scope='payments').first()
@@ -559,6 +560,7 @@ def create_app(config_path):
 
         # If payment is not found, create it. If completed, return an error
         if payment is None:
+
             data = request.get_json()
             pl_cost = data['paymentData']['amount']
 
@@ -566,21 +568,22 @@ def create_app(config_path):
             if pl_cost is None or pl_cost <= 0:
                 return jsonify({'error': 'Invalid amount'}), 400
 
+            logging.info(colorama.Fore.GREEN + f"APPROVE: Creating a new payment for user: {user.username} in the amount of {pl_cost}. Payment ID: {payment_id}")
+
             # approveStatus = pi_network.get_payment(payment_id)
             headers = {
                 "Authorization": f"Key {app.config['SERVER_API_KEY']}",
                 "Content-Type": "application/json"
             }
             response = requests.post(f"{app.config['BASE_URL']}/payments/" + payment_id + "/approve/", headers=headers)
-            print("Payment response: ", response.content)
 
             # Save contents to json file localy using payment_id as filename
-            with open(f"{payment_id}_approval.json", "w") as f:
+            with open(f"resources/approvals/{payment_id}_approval.json", "w") as f:
                 json.dump(response.json(), f)
 
             # if response status is not 200, return an error
             if response.status_code != 200:
-                print("Failed to approve payment")
+                logging.error(colorama.Fore.RED + f"ERROR: Approve payment failed. Failed to approve payment. Payment ID: {payment_id}. Response: {response.content}")
                 return jsonify({'error': 'Failed to approve payment'}), 500
 
             # Create a transaction record
@@ -589,6 +592,7 @@ def create_app(config_path):
             if transaction is None:
                 return jsonify({'error': 'Failed to create transaction'}), 500
 
+            logging.info(colorama.Fore.GREEN + f"APPROVE: Payment approved successfully for user: {user.username}. Payment ID: {payment_id}")
             return jsonify(response.json())
 
 
@@ -611,15 +615,12 @@ def create_app(config_path):
             # Check if the payment exists and is pending
             payment = Transaction.query.filter_by(id=payment_id, status="pending").first()
             if payment is None:
-                print("Payment not found")
+                logging.error(colorama.Fore.RED + f"ERROR: Complete payment failed. Payment not found or already completed. Payment ID: {payment_id}")
                 return jsonify({'error': 'Payment not found or already completed'}), 404
 
             data = request.get_json()
             payment_id = data["paymentId"]
             txid = data["txid"]
-
-            print("Payment ID: ", payment_id)
-            print("Transaction ID: ", txid)
 
             # Check if the payment ID and transaction ID are provided
             if payment_id is None or txid is None:
@@ -633,10 +634,8 @@ def create_app(config_path):
             }
             response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
 
-            print("Complete payment response: ", response.content)
-
-            # Save contents to json file localy using payment_id as filename
-            with open(f"{payment_id}_confirmed.json", "w") as f:
+            # Save contents to json file localy using payment_id as filename ({payment_id}_confirmed.json) in path resources/confirmations/
+            with open(f"resources/confirmations/{payment_id}_confirmed.json", "w") as f:
                 json.dump(response.json(), f)
 
             if response.status_code != 200:
@@ -647,9 +646,11 @@ def create_app(config_path):
                 return jsonify({'error': 'Failed to complete transaction'}), 500
 
             db.session.commit()
+
+            logging.info(colorama.Fore.GREEN + f"COMPLETE: Payment completed successfully for user: {user.username}. Payment ID: {payment_id}")
             return jsonify({'message': 'Payment completed successfully'}), 200
         except Exception as err:
-            logging.error(err)
+            logging.error(colorama.Fore.RED + f"ERROR: Complete payment failed. {str(err)}")
             return jsonify({'error': 'Failed to complete payment'}), 500
 
     @app.route("/cancel_payment/<payment_id>", methods=["POST"], endpoint="cancel_payment")
@@ -667,13 +668,15 @@ def create_app(config_path):
         # Get post data
         data = request.get_json()
 
-
         payment_id = data['payment']['identifier'] if 'identifier' in data['payment'] else None
         amount = data['payment']['amount'] if 'amount' in data['payment'] else 0
         user_id = data['payment']['user_uid'] if 'user_uid' in data['payment'] else None
         memo = data['payment']['memo'] if 'memo' in data['payment'] else None
         trans_type=None
         txid=None
+
+        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Incomplete payment received for user: {user_id}. Payment ID: {payment_id}. Amount: {amount}")
+
         try:
             trans_type = data['payment']['metadata']['transType']
         except KeyError:
@@ -689,14 +692,13 @@ def create_app(config_path):
         # Check if the payment exists
         payment = Transaction.query.filter_by(id=payment_id).first()
 
-        print(payment)
-
         # if payment is not found, create it
         if payment is None:
             transaction = create_transaction(user_id=user_id, ref_id=None, wallet_id=None, amount=amount, transaction_type=trans_type, memo=memo, status='pending', id=payment_id)
 
             # Check if the transaction was created successfully
             if transaction is None:
+                logging.error(colorama.Fore.RED + f"INCOMPLETE ERROR: Failed to create transaction for user: {user_id}. Payment ID: {payment_id}")
                 return jsonify({'error': 'Failed to create transaction'}), 500
 
         # Check if payment status is completed in the database
@@ -706,15 +708,16 @@ def create_app(config_path):
                 "Content-Type": "application/json"
             }
 
+            logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Payment already completed for user: {user_id} in database. Payment ID: {payment_id}. Submitting to server")
+
             response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
 
-            print("Complete payment response: ", response.content)
-
             # Save contents to json file localy using payment_id as filename
-            with open(f"{payment_id}_confirmed.json", "w") as f:
+            with open(f"resources/confirmations/{payment_id}_confirmed.json", "w") as f:
                 json.dump(response.json(), f)
 
             if response.status_code != 200:
+                # Need to alert admins of manual intervention
                 return jsonify({'error': 'Failed to complete payment'}), 500
 
 
@@ -726,12 +729,11 @@ def create_app(config_path):
                 "Content-Type": "application/json"
             }
 
+            logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Payment approved for user: {user_id}. Payment ID: {payment_id}. Submitting to server")
             response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
 
-            print("Complete payment response: ", response.content)
-
             # Save contents to json file localy using payment_id as filename
-            with open(f"{payment_id}_confirmed.json", "w") as f:
+            with open(f"resources/confirmations/{payment_id}_confirmed.json", "w") as f:
                 json.dump(response.json(), f)
 
             if response.status_code != 200:
@@ -741,6 +743,7 @@ def create_app(config_path):
             if not complete_transaction(payment.id, txid):
                 return jsonify({'error': 'Failed to complete transaction'}), 500
 
+        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Incomplete payment completed for user: {user_id}. Payment ID: {payment_id}. Amount: {amount}")
         # Return success message
         return jsonify({'message': 'Payment completed successfully'}), 200
     @app.route("/api/ticket-details", methods=["GET"])
@@ -757,7 +760,7 @@ def create_app(config_path):
                 # Divide the base fee by 10000000 to get the actual fee
                 baseFee = int(pi_network.fee) / 10000000
             except requests.exceptions.RequestException as err:
-                logging.error(err)
+                logging.error(colorama.Fore.RED + f"ERROR: Failed to fetch ticket details for user: {user.username}. {str(err)}")
                 baseFee = 0.01
 
             # TicketID randomly generated
@@ -780,7 +783,7 @@ def create_app(config_path):
 
             return jsonify(ticket_details)
         except requests.exceptions.RequestException as err:
-            logging.error(err)
+            logging.error(colorama.Fore.RED + f"ERROR: Failed to fetch ticket details for user: {user.username}. {str(err)}")
             return jsonify({'error': 'Failed to fetch ticket details'}), 500
 
     @app.route('/admin/create-game', methods=['POST'])
