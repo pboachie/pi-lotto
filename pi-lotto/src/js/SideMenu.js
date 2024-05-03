@@ -2,9 +2,8 @@
 import React from 'react';
 import '../css/SideMenu.css';
 import { FaTimes, FaHome } from 'react-icons/fa';
-import PiDeposit from './PiDeposit';
 
-function SideMenu({ isOpen, onGameClick, onClose }) {
+function SideMenu({ isOpen, onGameClick, onClose, onCloseComponents }) {
   const handleGameClick = (game) => {
     onGameClick(game);
     onClose();
@@ -15,6 +14,7 @@ function SideMenu({ isOpen, onGameClick, onClose }) {
 
     onGameClick(null);
     onClose();
+    onCloseComponents();
   };
 
   return (
