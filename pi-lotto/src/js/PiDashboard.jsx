@@ -1,9 +1,11 @@
-// PiLotto.js
+// PiDashboard.jsx
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import Lotto from "./Lotto";
 import PiAuthentication from "./PiAuthentication";
 import SideMenu from "./SideMenu";
 import PiDeposit from "./PiDeposit";
+import PurchaseModal from './PurchaseModal';
+
 
 import "../css/PiDashboard.css";
 import axios from "axios";
@@ -19,6 +21,7 @@ function PiLotto() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDepositVisible, setIsDepositVisible] = useState(false);
+  const [isPurchaseModalVisible, setIsPurchaseModalVisible] = useState(false);
   const userIconRef = useRef(null);
 
   useEffect(() => {
@@ -96,6 +99,12 @@ function PiLotto() {
     setUser(userInfo);
   };
 
+  const handleCloseComponents = () => {
+    setIsDepositVisible(false);
+    setIsPurchaseModalVisible(false);
+    setSelectedGame(null);
+  };
+
   const handleGameClick = (game) => {
     setSelectedGame(game);
     setIsLoading(true);
@@ -127,6 +136,9 @@ function PiLotto() {
   };
 
   const handleDeposit = () => {
+    // Close other components
+    handleCloseComponents();
+
     setIsDepositVisible(true);
   };
 
@@ -180,6 +192,7 @@ function PiLotto() {
 
     if (isDepositVisible) {
       return <PiDeposit onClose={() => setIsDepositVisible(false)} isAuthenticated={isAuthenticated} userBalance={userBalance} updateUserBalance={updateUserBalance} />;
+
     }
 
     return (
@@ -228,7 +241,19 @@ function PiLotto() {
           isOpen={isSideMenuOpen}
           onGameClick={handleGameClick}
           onClose={toggleSideMenu}
+          onCloseComponents={handleCloseComponents}
         />
+      )}
+
+      {isPurchaseModalVisible && (
+        <PurchaseModal
+          numberSets={null}
+          ticketNumber={0}
+          ticketPrice={0}
+          baseFee={0}
+          serviceFee={0}
+          onClose={() => setIsPurchaseModalVisible(false)}
+            />
       )}
       <div className="main-content">{renderMainContent()}</div>
     </div>
