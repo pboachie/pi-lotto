@@ -1,9 +1,9 @@
 // PiLotto.js
 import React, { useEffect, useState, useRef } from 'react';
-import Lotto from '../js/Lotto';
-import PiAuthentication from '../js/PiAuthentication';
-import SideMenu from '../js/SideMenu';
-import PiDeposit from '../js/PiDeposit';
+import Lotto from './Lotto';
+import PiAuthentication from './PiAuthentication';
+import SideMenu from './SideMenu';
+import PiDeposit from './PiDeposit';
 
 import '../css/PiLotto.css';
 import axios from 'axios';
