@@ -1,6 +1,6 @@
 app:
   debug: true
-  host: 'localhost'
+  host: 'api.unipigames.com'
   port: 5000
   vesion: '0.0.1'
 
@@ -9,17 +9,18 @@ database:
   track_modifications: false
 
 api:
-  server_api_key: 'egx1oqqi3a7od9b6ujbqoq2lp8f2kfm7hgve9lits4mggsta5wcxojcdqfsvmupr'
+  server_api_key: 'CHANGE_ME'
   base_url: 'https://api.minepi.com/v2'
-  app_wallet_seed: 'SA2EVUVTAXHXSZR2QMZZT7XQQB7JLM4FLCJ66VFD2SB6EMR4DVFUCUL7'
-  app_wallet_address: 'GBVH52WDRYMVS7Q5CEZ4BUSCPXYAZWLOTICA5IZKPFYCS5CGODKRGUN7'
+  app_wallet_seed: 'CHANGE_ME'
+  app_wallet_address: 'CHANGE_ME'
   # Pi Network" | "Pi Testnet
   network: Pi Testnet
 
 jwt:
-  secret_key: 'b6e7sx9a3d8f2kfm7hgve9lits4mggsta5wcxojcdqfsvmupr'
+  secret_key: 'CHANGE_ME'
   token_location: 'headers'
 
 logging:
-  level: 'INFO'
+  level: 'DEBUG'
   format: '%(asctime)s - %(levelname)s - %(message)s'
+  filePath: '/logs/server.log'
