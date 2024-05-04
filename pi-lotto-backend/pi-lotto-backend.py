@@ -29,6 +29,14 @@ def create_app(config_path):
                         format=config['logging']['format'],
                         handlers=[logging.StreamHandler()])
 
+    # Add file handler if log file path is provided
+    file_handler = logging.FileHandler(config['logging']['filePath'], mode='a', encoding=None, delay=False)
+    logging.getLogger().addHandler(file_handler)
+
+
+    # Set colorama to autoreset
+    colorama.init(autoreset=True)
+
     # Debug mode
     app.config["DEBUG"] = config['app']['debug']
 
