@@ -209,7 +209,7 @@ function PiLotto() {
         <button className="menu-btn" onClick={toggleSideMenu}>
           <FaBars />
         </button>
-        <h1>Pi-Lotto</h1>
+        <h1>Uni Pi Games</h1>
         {isAuthenticated && (
           <div className="user-info">
             <div className="user-details">

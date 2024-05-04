@@ -81,7 +81,8 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
   return (
     <div className="pi-authentication">
       <div className="content">
-        <h1 className="title">Pi-Lotto</h1>
+        <h1 className="title">Welcome to UNI PI GAMES</h1>
+        <p className="description">Play and win Pi coins!</p>
         <button
           className={`auth-button ${isAuthenticated ? 'authenticated' : ''}`}
           onClick={handleAuthentication}
