@@ -3,11 +3,10 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import '../css/PiDeposit.css';
 
-const PiDeposit = ({ onClose, isAuthenticated, userBalance, setUserBalance }) => {
+const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance }) => {
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
 
   const handleDeposit = async () => {
     if (!isAuthenticated) {
@@ -16,13 +15,26 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, setUserBalance }) =>
     }
 
     const parsedAmount = parseFloat(amount);
-    if (parsedAmount < 0.25) {
-      setErrorMessage('Amount must be at least 0.25');
+
+    // Check if number is not null or blank and is numeric
+    if (parsedAmount && !isNaN(parsedAmount)) {
+      if (parsedAmount < 0.25) {
+        setErrorMessage('Amount must be at least 0.25');
+        document.querySelector('.pi-deposit input').select();
+        setTimeout(() => {
+          setErrorMessage('');
+        }, 3000); // Clear the error message after 3 seconds
+        return;
+      }
+    } else {
+      setErrorMessage('Please enter an amount to deposit');
+      document.querySelector('.pi-deposit input').focus();
       setTimeout(() => {
         setErrorMessage('');
       }, 3000); // Clear the error message after 3 seconds
       return;
     }
+
 
     const fetchUserBalance = async () => {
       try {
@@ -70,7 +82,7 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, setUserBalance }) =>
             console.log()
 
             // Send the payment data to the backend for server-side approval
-            const response = await axios.post('http://127.0.0.1:5000/approve_payment/'+ paymentId, { paymentData }, { headers: header });
+            const response = await axios.post('http://localhost:5000/approve_payment/'+ paymentId, { paymentData }, { headers: header });
 
             if (response.status !== 200) {
               console.error('Payment approval error:', response.data.error);
@@ -99,7 +111,7 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, setUserBalance }) =>
             console.log('Payment ID:', paymentId);
             console.log('TXID:', txid);
 
-            const response = await axios.post('http://127.0.0.1:5000/complete_payment/'+ paymentId, { paymentId, txid }, { headers: header });
+            const response = await axios.post('http://localhost:5000/complete_payment/'+ paymentId, { paymentId, txid }, { headers: header });
 
             if (response.status !== 200) {
               console.error('Payment completion error:', response.data.error);
@@ -116,7 +128,21 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, setUserBalance }) =>
             // Update the user balance
             const updatedBalance = await fetchUserBalance();
             if (updatedBalance !== null) {
-              setUserBalance(updatedBalance);
+              updateUserBalance(updatedBalance);
+
+              // Apply the balance animation effect
+              const balanceElement = document.querySelector('.user-info .user-details span:last-child');
+              const prevBalance = userBalance;
+
+              if (updatedBalance > prevBalance) {
+                balanceElement.classList.add('balance-increase');
+              } else if (updatedBalance < prevBalance) {
+                balanceElement.classList.add('balance-decrease');
+              }
+
+              setTimeout(() => {
+                balanceElement.classList.remove('balance-increase', 'balance-decrease');
+              }, 500);
             }
 
             // Clear form input

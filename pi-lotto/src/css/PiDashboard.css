@@ -1,4 +1,4 @@
-/* PiLotto.css */
+/* PiDashboard.css */
 .pi-lotto {
   display: flex;
   flex-direction: column;
@@ -103,4 +103,38 @@
 .balance-info {
   display: flex;
   align-items: center;
+}
+
+.balance-increase {
+  animation: balance-increase 0.5s ease-in-out;
+  color: green;
+}
+
+.balance-decrease {
+  animation: balance-decrease 0.5s ease-in-out;
+  color: red;
+}
+
+@keyframes balance-increase {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes balance-decrease {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.8);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
