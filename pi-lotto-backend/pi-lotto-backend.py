@@ -826,7 +826,7 @@ def create_app(config_path):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
 
-    return app, db
+    return app
 
 def validate_config(config):
     required_keys = ['app', 'database', 'api', 'jwt', 'logging']
@@ -840,7 +840,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     config_path = sys.argv[1]
-    app, db = create_app(config_path)
+    app = create_app(config_path)
 
     with app.app_context():
         # Validate configuration
@@ -852,3 +852,4 @@ if __name__ == "__main__":
         db.create_all()
 
     app.run(host=config['app']['host'], port=config['app']['port'])
+
