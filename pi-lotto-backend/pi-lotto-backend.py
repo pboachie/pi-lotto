@@ -18,7 +18,7 @@ from src.db.models import db, Game, UserGame, User, Wallet, Transaction, Transac
 def create_app(config_path):
     app = Flask(__name__)
     jwt = JWTManager(app)
-    CORS(app)
+    CORS(app, resources={r"/*": {"origins": "*"}}, origins="*")
 
     # Load configuration from config.yml
     with open(config_path, 'r') as config_file:
