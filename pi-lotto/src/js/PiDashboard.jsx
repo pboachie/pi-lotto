@@ -23,6 +23,7 @@ function PiLotto() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDepositVisible, setIsDepositVisible] = useState(false);
   const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
+  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [isPurchaseModalVisible, setIsPurchaseModalVisible] = useState(false);
   const userIconRef = useRef(null);
 
@@ -154,6 +155,10 @@ function PiLotto() {
   };
 
   const handleLogout = () => {
+    setIsLogoutModalVisible(true);
+  };
+
+  const handleConfirmLogout = () => {
     // Clear the access token from the local storage
     localStorage.removeItem("@pi-lotto:access_token");
 
@@ -171,11 +176,16 @@ function PiLotto() {
     // Reset the selected game
     setSelectedGame(null);
 
-    // reset the visibility of the components
+    // Reset the visibility of the components
     setIsDepositVisible(false);
     setIsWithdrawVisible(false);
 
-    alert("You have been logged out.");
+    // Close the logout modal
+    setIsLogoutModalVisible(false);
+  };
+
+  const handleCancelLogout = () => {
+    setIsLogoutModalVisible(false);
   };
 
   const renderMainContent = () => {
@@ -254,6 +264,19 @@ function PiLotto() {
           onClose={toggleSideMenu}
           onCloseComponents={handleCloseComponents}
         />
+      )}
+
+      {isLogoutModalVisible && (
+        <div className="logout-modal"> 
+          <div className="logout-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <div className="logout-modal-buttons">
+              <button onClick={handleConfirmLogout}>OK</button>
+              <button onClick={handleCancelLogout}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {isPurchaseModalVisible && (
