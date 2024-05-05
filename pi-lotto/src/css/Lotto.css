@@ -6,37 +6,25 @@
   padding: 20px;
 }
 
-.number-selector-container {
-  margin-bottom: 20px;
-}
-
-.number-grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 10px;
-}
-
-.number-button {
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 10px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.number-button.disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+.lotto-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
 }
 
 .lotto-ticket {
+  position: sticky;
+  top: 0;
   background-color: #f5f5f5;
   border: 1px solid #ccc;
   border-radius: 4px;
   padding: 20px;
   text-align: center;
   margin-bottom: 20px;
+  width: 100%;
+  max-width: 400px;
+  z-index: 1;
 }
 
 .ticket-numbers {
@@ -82,8 +70,16 @@
   cursor: pointer;
 }
 
+.number-selector-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 .PiLotto-grid {
   margin-top: 20px;
+  margin-bottom: 20px;
 }
 
 .PiLotto-button {
@@ -100,4 +96,45 @@
 .PiLotto-button.disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+  gap: 10px;
+  max-width: 100%;
+}
+
+.number-button {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.number-button.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+@media screen and (min-width: 768px) {
+  .lotto-container {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .lotto-ticket {
+    margin-right: 20px;
+  }
+
+  .number-selector-container {
+    flex-direction: row;
+  }
+
+  .PiLotto-grid {
+    margin-top: 0;
+    margin-right: 20px;
+  }
 }

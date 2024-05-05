@@ -1,9 +1,8 @@
 // Lotto.js
-
 import React, { useState, useEffect } from 'react';
 import PurchaseModal from './PurchaseModal';
 import '../css/Lotto.css';
-import axios from 'axios';
+import axios from 'axios'
 
 function Lotto() {
   const [numbers, setNumbers] = useState(Array(5).fill(null));
@@ -112,56 +111,58 @@ function Lotto() {
 
   return (
     <div className="lotto">
-      <div className="number-selector-container">
-        <div className="number-grid">
-          {Array.from({ length: 70 }, (_, i) => (
-            <button
-              key={i}
-              className={`number-button ${isNumberDisabled(i + 1) ? 'disabled' : ''}`}
-              onClick={() => handleNumberClick(i + 1)}
-              disabled={isNumberDisabled(i + 1)}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="lotto-ticket">
-        <h3>Your Lotto Ticket</h3>
-        <div className="ticket-numbers">
-          {numbers.map((number, index) => (
+      <div className="lotto-container">
+        <div className="lotto-ticket">
+          <h3>Your Lotto Ticket</h3>
+          <div className="ticket-numbers">
+            {numbers.map((number, index) => (
+              <span
+                key={index}
+                className="ticket-number"
+                onClick={() => handleNumberUnselect(number)}
+              >
+                {number || '-'}
+              </span>
+            ))}
             <span
-              key={index}
-              className="ticket-number"
-              onClick={() => handleNumberUnselect(number)}
+              className="ticket-PiLotto"
+              onClick={() => handlePiLottoUnselect()}
             >
-              {number || '-'}
+              {PiLotto || '-'}
             </span>
-          ))}
-          <span
-            className="ticket-PiLotto"
-            onClick={() => handlePiLottoUnselect()}
-          >
-            {PiLotto || '-'}
-          </span>
-        </div>
-        {ticketNumber && <p className="ticket-number-label">Ticket# {ticketNumber}</p>}
-        <button className="purchase-button" onClick={handleSubmit}>
-          Purchase Ticket
-        </button>
-      </div>
-      <div className="PiLotto-grid">
-        <h3>PiLotto</h3>
-        {Array.from({ length: 25 }, (_, i) => (
-          <button
-            key={i}
-            className={`PiLotto-button ${isPiLottoDisabled(i + 1) ? 'disabled' : ''}`}
-            onClick={() => handlePiLottoClick(i + 1)}
-            disabled={isPiLottoDisabled(i + 1)}
-          >
-            {i + 1}
+          </div>
+          {ticketNumber && <p className="ticket-number-label">Ticket# {ticketNumber}</p>}
+          <button className="purchase-button" onClick={handleSubmit}>
+            Purchase Ticket
           </button>
-        ))}
+        </div>
+        <div className="number-selector-container">
+          <div className="PiLotto-grid">
+            <h3>PiLotto</h3>
+            {Array.from({ length: 25 }, (_, i) => (
+              <button
+                key={i}
+                className={`PiLotto-button ${isPiLottoDisabled(i + 1) ? 'disabled' : ''}`}
+                onClick={() => handlePiLottoClick(i + 1)}
+                disabled={isPiLottoDisabled(i + 1)}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+          <div className="number-grid">
+            {Array.from({ length: 70 }, (_, i) => (
+              <button
+                key={i}
+                className={`number-button ${isNumberDisabled(i + 1) ? 'disabled' : ''}`}
+                onClick={() => handleNumberClick(i + 1)}
+                disabled={isNumberDisabled(i + 1)}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       {showModal && (
         <PurchaseModal
