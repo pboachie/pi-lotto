@@ -16,10 +16,10 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
 
     const parsedAmount = parseFloat(amount);
 
-    // Check if number is not null or blank and is numeric
+    // Check if number is not null or blank and is numeric (TODO - Fetch minimum withdrawal amount from the server)
     if (parsedAmount && !isNaN(parsedAmount)) {
-      if (parsedAmount < 0.25) {
-        setErrorMessage('Amount must be at least 0.25');
+      if (parsedAmount < 0.019) {
+        setErrorMessage('Amount must be at least 0.019');
         document.querySelector('.pi-withdraw input').select();
         setTimeout(() => {
           setErrorMessage('');
@@ -36,25 +36,25 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
     }
 
 
-    const fetchUserBalance = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/user-balance', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
-          },
-        });
+    // const fetchUserBalance = async () => {
+    //   try {
+    //     const response = await axios.get('http://localhost:5000/api/user-balance', {
+    //       headers: {
+    //         Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+    //       },
+    //     });
 
-        if (response.status === 200) {
-          return response.data.balance;
-        } else {
-          console.error('Failed to fetch user balance:', response.data.error);
-          return null;
-        }
-      } catch (error) {
-        console.error('Error fetching user balance:', error);
-        return null;
-      }
-    };
+    //     if (response.status === 200) {
+    //       return response.data.balance;
+    //     } else {
+    //       console.error('Failed to fetch user balance:', response.data.error);
+    //       return null;
+    //     }
+    //   } catch (error) {
+    //     console.error('Error fetching user balance:', error);
+    //     return null;
+    //   }
+    // };
 
     const transID = Math.floor(Math.random() * 1000000000);
 
@@ -83,18 +83,18 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
 
   return (
     <div className="pi-withdraw">
-      <h2>Deposit {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</h2>
+      <h2>Withdraw {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</h2>
       <div className="input-group">
         <input
           type="number"
-          placeholder="Amount (min 0.25)"
+          placeholder="Amount (min 0.019)"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          min="0.25"
-          step="0.01"
+          min="0.019"
+          step="0.001"
         />
         <button onClick={handleWithdraw} disabled={!isAuthenticated}>
-          Deposit
+          Withdraw
         </button>
       </div>
       {errorMessage && <div className="error-message">{errorMessage}</div>}
