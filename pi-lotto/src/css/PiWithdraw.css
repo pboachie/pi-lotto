@@ -1,133 +1,115 @@
 .pi-withdraw {
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-.pi-withdraw h2 {
-  margin-bottom: 20px;
-  text-align: center;
-  animation: slideInDown 0.5s ease-in-out;
-}
-
-.balance-info {
-  margin-bottom: 20px;
-  animation: slideInUp 0.5s ease-in-out;
-}
-
-.balance-info p {
-  margin: 5px 0;
-}
-
-.input-group {
-  display: flex;
-  margin-bottom: 20px;
-  animation: slideInLeft 0.5s ease-in-out;
-}
-
-.input-group input {
-  flex: 1;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px 0 0 4px;
-}
-
-.input-group button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 0 4px 4px 0;
-  cursor: pointer;
-  transition: background-color 0.3s ease-in-out;
-}
-
-.input-group button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-.input-group button:hover {
-  background-color: #45a049;
-}
-
-.payment-status {
-  margin-bottom: 20px;
-  font-weight: bold;
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-.close-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease-in-out;
-  animation: slideInUp 0.5s ease-in-out;
-}
-
-.close-button:hover {
-  background-color: #d32f2f;
-}
-
-.error-message {
-  color: red;
-  margin-top: 8px;
-  animation: fadeOut 3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
   }
-  100% {
-    opacity: 1;
-  }
-}
 
-@keyframes fadeOut {
-  0% {
-    opacity: 1;
+  .pi-withdraw h2 {
+    margin-bottom: 20px;
+    text-align: center;
   }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
 
-@keyframes slideInDown {
-  0% {
-    transform: translateY(-100%);
+  .input-group {
+    display: flex;
+    margin-bottom: 20px;
   }
-  100% {
-    transform: translateY(0);
-  }
-}
 
-@keyframes slideInUp {
-  0% {
-    transform: translateY(100%);
+  .input-group input {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
   }
-  100% {
-    transform: translateY(0);
-  }
-}
 
-@keyframes slideInLeft {
-  0% {
-    transform: translateX(-100%);
+  .input-group button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
   }
-  100% {
-    transform: translateX(0);
+
+  .input-group button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
   }
-}
+
+  .payment-info {
+    margin-bottom: 20px;
+  }
+
+  .payment-status {
+    margin-bottom: 20px;
+    font-weight: bold;
+  }
+
+  .close-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .error-message {
+    color: red;
+    margin-top: 8px;
+    animation: fadeOut 3s ease-in-out;
+  }
+
+  .loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 40px;
+    font-size: 16px;
+    color: #888;
+  }
+
+  .success-message {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #4caf50;
+    color: white;
+    border-radius: 4px;
+    text-align: center;
+    animation: fadeOut 3s ease-in-out;
+  }
+
+  .loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 40px;
+    font-size: 16px;
+    color: #888;
+  }
+
+  .success-message {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #4caf50;
+    color: white;
+    border-radius: 4px;
+    text-align: center;
+    animation: fadeOut 3s ease-in-out;
+  }
+
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }

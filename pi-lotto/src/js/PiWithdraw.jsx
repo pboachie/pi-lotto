@@ -7,6 +7,7 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const transactionFee = 0.01;
   const minWithdraw = 0.019;
@@ -68,7 +69,11 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
         setPaymentStatus('Withdrawal successful');
         updateUserBalance(response.data.balance);
         setAmount('');
-        setIsLoading(false); //
+        setIsLoading(false);
+        setSuccessMessage('Withdrawal processed successfully!'); // Set success message
+        setTimeout(() => {
+          setSuccessMessage(''); // Clear success message after 3 seconds
+        }, 3000);
       }else {
         setPaymentStatus('Withdrawal failed');
         setErrorMessage(response.data.error);
