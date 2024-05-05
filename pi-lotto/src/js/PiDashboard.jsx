@@ -4,6 +4,7 @@ import Lotto from "./Lotto";
 import PiAuthentication from "./PiAuthentication";
 import SideMenu from "./SideMenu";
 import PiDeposit from "./PiDeposit";
+import PiWithdraw from "./PiWithdraw";
 import PurchaseModal from './PurchaseModal';
 
 
@@ -21,6 +22,7 @@ function PiLotto() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDepositVisible, setIsDepositVisible] = useState(false);
+  const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
   const [isPurchaseModalVisible, setIsPurchaseModalVisible] = useState(false);
   const userIconRef = useRef(null);
 
@@ -101,6 +103,7 @@ function PiLotto() {
 
   const handleCloseComponents = () => {
     setIsDepositVisible(false);
+    setIsWithdrawVisible(false);
     setIsPurchaseModalVisible(false);
     setSelectedGame(null);
   };
@@ -143,8 +146,11 @@ function PiLotto() {
   };
 
   const handleWithdraw = () => {
-    // Implement withdraw functionality
-    console.log("Withdraw clicked");
+
+    // Close other components
+    handleCloseComponents();
+
+    setIsWithdrawVisible(true);
   };
 
   const handleLogout = () => {
@@ -165,8 +171,9 @@ function PiLotto() {
     // Reset the selected game
     setSelectedGame(null);
 
-    // reset the deposit visibility
+    // reset the visibility of the components
     setIsDepositVisible(false);
+    setIsWithdrawVisible(false);
 
     alert("You have been logged out.");
   };
@@ -193,6 +200,10 @@ function PiLotto() {
     if (isDepositVisible) {
       return <PiDeposit onClose={() => setIsDepositVisible(false)} isAuthenticated={isAuthenticated} userBalance={userBalance} updateUserBalance={updateUserBalance} />;
 
+    }
+
+    if (isWithdrawVisible) {
+      return <PiWithdraw onClose={() => setIsWithdrawVisible(false)} isAuthenticated={isAuthenticated} userBalance={userBalance} updateUserBalance={updateUserBalance} />;
     }
 
     return (
