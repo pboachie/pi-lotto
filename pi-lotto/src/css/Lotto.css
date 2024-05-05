@@ -49,8 +49,9 @@
   cursor: pointer;
 }
 
-.ticket-PiLotto {
-  background-color: #f0ad4e;
+.ticket-number.selected,
+.ticket-PiLotto.selected {
+  background-color: #007bff;
   color: #fff;
 }
 
@@ -98,6 +99,11 @@
   cursor: not-allowed;
 }
 
+.PiLotto-button.selected {
+  background-color: #ff8c00;
+  color: #fff;
+}
+
 .number-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
@@ -117,6 +123,11 @@
 .number-button.disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+.number-button.selected {
+  background-color: #007bff;
+  color: #fff;
 }
 
 @media screen and (min-width: 768px) {

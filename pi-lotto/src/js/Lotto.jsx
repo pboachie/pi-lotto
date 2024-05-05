@@ -1,13 +1,13 @@
 // Lotto.js
-import React, { useState, useEffect } from 'react';
-import PurchaseModal from './PurchaseModal';
-import '../css/Lotto.css';
-import axios from 'axios'
+import React, { useState, useEffect } from "react";
+import PurchaseModal from "./PurchaseModal";
+import "../css/Lotto.css";
+import axios from "axios";
 
 function Lotto() {
   const [numbers, setNumbers] = useState(Array(5).fill(null));
   const [PiLotto, setPiLotto] = useState(null);
-  const [ticketNumber, setTicketNumber] = useState('');
+  const [ticketNumber, setTicketNumber] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [ticketDetails, setTicketDetails] = useState({
     ticketPrice: null,
@@ -17,14 +17,19 @@ function Lotto() {
 
   const fetchTicketDetails = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/ticket-details', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
-        },
-      });
+      const response = await axios.get(
+        "http://localhost:5000/api/ticket-details",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem(
+              "@pi-lotto:access_token"
+            )}`,
+          },
+        }
+      );
       setTicketDetails(response.data);
     } catch (error) {
-      console.error('Error fetching ticket details:', error);
+      console.error("Error fetching ticket details:", error);
     }
   };
 
@@ -35,8 +40,8 @@ function Lotto() {
   }, [numbers, ticketNumber]);
 
   const generateTicketNumber = () => {
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let ticketNum = '';
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let ticketNum = "";
     for (let i = 0; i < 8; i++) {
       ticketNum += chars[Math.floor(Math.random() * chars.length)];
     }
@@ -44,20 +49,24 @@ function Lotto() {
   };
 
   const handleNumberClick = (number) => {
-    const availableIndex = numbers.findIndex((num) => num === null);
-    if (availableIndex !== -1) {
-      const newNumbers = [...numbers];
-      newNumbers[availableIndex] = number;
-      setNumbers(newNumbers);
+    if (!isNumberDisabled(number)) {
+      const availableIndex = numbers.findIndex((num) => num === null);
+      if (availableIndex !== -1) {
+        const newNumbers = [...numbers];
+        newNumbers[availableIndex] = number;
+        setNumbers(newNumbers);
+      }
     }
   };
 
   const handlePiLottoClick = (number) => {
-    setPiLotto(number);
+    if (!isNumberDisabled(number)) {
+      setPiLotto(number);
+    }
   };
 
   const isNumberDisabled = (number) => {
-    return numbers.includes(number);
+    return numbers.includes(number) || PiLotto === number;
   };
 
   const isPiLottoDisabled = (number) => {
@@ -79,20 +88,23 @@ function Lotto() {
 
   const handleSubmit = async () => {
     // Check if all 5 numbers and the PiLotto number are selected
-    const allNumbersSelected = numbers.every((num) => num !== null) && PiLotto !== null;
+    const allNumbersSelected =
+      numbers.every((num) => num !== null) && PiLotto !== null;
 
     if (allNumbersSelected) {
       // Fetch ticket details before showing the modal
       await fetchTicketDetails();
 
       // Handle ticket purchase logic here
-      console.log('Selected numbers:', numbers);
-      console.log('PiLotto number:', PiLotto);
-      console.log('Ticket number:', ticketNumber);
+      console.log("Selected numbers:", numbers);
+      console.log("PiLotto number:", PiLotto);
+      console.log("Ticket number:", ticketNumber);
 
       setShowModal(true);
     } else {
-      alert('Please select all 5 numbers and the PiLotto number to purchase a ticket.');
+      alert(
+        "Please select all 5 numbers and the PiLotto number to purchase a ticket."
+      );
     }
   };
 
@@ -107,7 +119,7 @@ function Lotto() {
       numbers: numbers,
       PiLotto: PiLotto,
     });
-  };
+  }
 
   return (
     <div className="lotto">
@@ -118,20 +130,22 @@ function Lotto() {
             {numbers.map((number, index) => (
               <span
                 key={index}
-                className="ticket-number"
+                className={`ticket-number ${number ? "selected" : ""}`}
                 onClick={() => handleNumberUnselect(number)}
               >
-                {number || '-'}
+                {number || "-"}
               </span>
             ))}
             <span
-              className="ticket-PiLotto"
+              className={`ticket-PiLotto ${PiLotto ? "selected" : ""}`}
               onClick={() => handlePiLottoUnselect()}
             >
-              {PiLotto || '-'}
+              {PiLotto || "-"}
             </span>
           </div>
-          {ticketNumber && <p className="ticket-number-label">Ticket# {ticketNumber}</p>}
+          {ticketNumber && (
+            <p className="ticket-number-label">Ticket# {ticketNumber}</p>
+          )}
           <button className="purchase-button" onClick={handleSubmit}>
             Purchase Ticket
           </button>
@@ -142,7 +156,9 @@ function Lotto() {
             {Array.from({ length: 25 }, (_, i) => (
               <button
                 key={i}
-                className={`PiLotto-button ${isPiLottoDisabled(i + 1) ? 'disabled' : ''}`}
+                className={`PiLotto-button ${
+                  isPiLottoDisabled(i + 1) ? "disabled" : ""
+                } ${PiLotto === i + 1 ? "selected" : ""}`}
                 onClick={() => handlePiLottoClick(i + 1)}
                 disabled={isPiLottoDisabled(i + 1)}
               >
@@ -154,7 +170,9 @@ function Lotto() {
             {Array.from({ length: 70 }, (_, i) => (
               <button
                 key={i}
-                className={`number-button ${isNumberDisabled(i + 1) ? 'disabled' : ''}`}
+                className={`number-button ${
+                  isNumberDisabled(i + 1) ? "disabled" : ""
+                } ${numbers.includes(i + 1) ? "selected" : ""}`}
                 onClick={() => handleNumberClick(i + 1)}
                 disabled={isNumberDisabled(i + 1)}
               >
