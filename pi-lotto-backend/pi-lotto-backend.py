@@ -18,7 +18,7 @@ from src.db.models import db, Game, UserGame, User, Wallet, Transaction, Transac
 def create_app(config_path):
     app = Flask(__name__)
     jwt = JWTManager(app)
-    CORS(app)
+    CORS(app, resources={r"/*": {"origins": "*"}}, origins="*")
 
     # Load configuration from config.yml
     with open(config_path, 'r') as config_file:
@@ -28,6 +28,14 @@ def create_app(config_path):
     logging.basicConfig(level=config['logging']['level'],
                         format=config['logging']['format'],
                         handlers=[logging.StreamHandler()])
+
+    # Add file handler if log file path is provided
+    file_handler = logging.FileHandler(config['logging']['filePath'], mode='a', encoding=None, delay=False)
+    logging.getLogger().addHandler(file_handler)
+
+
+    # Set colorama to autoreset
+    colorama.init(autoreset=True)
 
     # Debug mode
     app.config["DEBUG"] = config['app']['debug']
@@ -315,6 +323,11 @@ def create_app(config_path):
         except requests.exceptions.RequestException as err:
             logging.error(err)
             return jsonify({'error': 'Failed to complete the payment'}), 500
+
+    @app.route('/loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf/')
+    def loaderio_verification():
+        return 'loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf'
+
 
     @app.route("/api/lotto-pool", methods=["GET"])
     @jwt_required()
@@ -826,7 +839,7 @@ def create_app(config_path):
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
 
-    return app, db
+    return app
 
 def validate_config(config):
     required_keys = ['app', 'database', 'api', 'jwt', 'logging']
@@ -840,7 +853,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     config_path = sys.argv[1]
-    app, db = create_app(config_path)
+    app = create_app(config_path)
 
     with app.app_context():
         # Validate configuration
@@ -852,3 +865,4 @@ if __name__ == "__main__":
         db.create_all()
 
     app.run(host=config['app']['host'], port=config['app']['port'])
+
