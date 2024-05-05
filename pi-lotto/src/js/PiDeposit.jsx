@@ -67,19 +67,45 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
       }
     };
 
-    const transID = Math.floor(Math.random() * 1000000000);
-
     try {
-      const paymentData = {
+
+      // Create the payment data
+      const requestData = {
         amount: parseFloat(amount),
-        memo: 'Deposit to Pi-Lotto',
-        metadata: {
-          locTransID: transID,
-          dateCreated: new Date().toISOString(),
-          transType: 'deposit',
-        },
+        dateCreated: new Date().toISOString()
       };
 
+      const requestAmount = parseFloat(amount);
+
+      if (requestAmount < minDeposit) {
+        setErrorMessage(`Amount must be at least ${minDeposit}`);
+        document.querySelector('.pi-deposit input').select();
+        setTimeout(() => {
+          setErrorMessage('');
+        }, 3000);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get payment data from the server
+      const getPaymentData = await axios.post('http://localhost:5000/create_deposit', requestData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`
+        },
+      });
+
+      if (getPaymentData.status !== 200) {
+        console.error('Payment data error:', getPaymentData.data.error);
+        setPaymentStatus('ERROR: ' + getPaymentData.data.error);
+        setIsLoading(false);
+        return;
+      }
+
+      setPaymentStatus('Payment requires user approval');
+
+      const paymentData = getPaymentData.data;
+
+      // Define the payment callbacks
       const callbacks = {
         onReadyForServerApproval: async (paymentId) => {
           try {
@@ -123,7 +149,7 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
 
             const response = await axios.post(
               `http://localhost:5000/complete_payment/${paymentId}`,
-              { paymentId, txid },
+              { paymentData, paymentId, txid },
               { headers: header }
             );
 
@@ -169,8 +195,9 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
         },
       };
 
-      const paymentId = await window.Pi.createPayment(paymentData, callbacks);
-      console.log('Payment created with ID:', paymentId);
+      // Create the payment on behalf of the user
+      await window.Pi.createPayment(paymentData, callbacks);
+
     } catch (error) {
       console.error('Error:', error);
       setIsLoading(false);
