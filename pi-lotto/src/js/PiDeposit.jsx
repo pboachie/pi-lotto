@@ -182,7 +182,7 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           min="0.25"
-          step="0.01"
+          step="0.001"
         />
         <button onClick={handleDeposit} disabled={!isAuthenticated}>
           Deposit
