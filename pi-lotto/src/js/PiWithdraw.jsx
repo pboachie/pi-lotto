@@ -8,6 +8,7 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
   const [paymentStatus, setPaymentStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const transactionFee = 0.01;
   const minWithdraw = 0.019;
@@ -93,6 +94,19 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
     }
   };
 
+  const handleWithdrawClick = () => {
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmWithdraw = async () => {
+    setShowConfirmation(false);
+    await handleWithdraw();
+  };
+
+  const handleCancelWithdraw = () => {
+    setShowConfirmation(false);
+  };
+
   return (
     <div className="pi-withdraw">
       <h2>Withdraw {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</h2>
@@ -114,12 +128,29 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
         {isLoading ? (
           <div className="loading-spinner">Processing...</div>
         ) : (
-          <button onClick={handleWithdraw} disabled={!isAuthenticated}>
+          <button onClick={handleWithdrawClick} disabled={!isAuthenticated}>
             Withdraw
           </button>
         )}
       </div>
+      {showConfirmation && (
+        <div className="confirmation-dialog">
+          <div className="confirmation-content">
+            <h3>Confirm Withdrawal</h3>
+            <p>Amount: {amount}</p>
+            <p>Transaction Fee: {transactionFee}</p>
+            <p>Final Amount: {(parseFloat(amount) + transactionFee).toFixed(6)}</p>
+            <div className="confirmation-buttons">
+              <button onClick={handleConfirmWithdraw}>Confirm</button>
+              <button onClick={handleCancelWithdraw}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       {errorMessage && <div className="error-message">{errorMessage}</div>}
+      {successMessage && (
+        <div className="success-message">{successMessage}</div>
+      )}
       {paymentStatus && <p className="payment-status">Payment Status: {paymentStatus}</p>}
       <button className="close-button" onClick={onClose}>
         Close
