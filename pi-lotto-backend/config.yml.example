@@ -1,6 +1,6 @@
 app:
   debug: true
-  host: 'api.unipigames.com'
+  host: 'localhost'
   port: 5000
   vesion: '0.0.1'
 
