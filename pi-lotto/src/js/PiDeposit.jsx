@@ -14,7 +14,8 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
 
   const handleDeposit = async () => {
     if (!isAuthenticated) {
-      console.error('User not authenticated');
+      setErrorMessage('User not authenticated');
+      window.location.reload();
       return;
     }
 

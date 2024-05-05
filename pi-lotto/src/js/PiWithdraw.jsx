@@ -16,7 +16,8 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
 
   const handleWithdraw = async () => {
     if (!isAuthenticated) {
-      console.error('User not authenticated');
+      setErrorMessage('ERROR: Session expired. Please log in again to withdraw funds.');
+      window.location.reload();
       return;
     }
 
