@@ -324,7 +324,7 @@ def create_app(config_path):
             logging.error(err)
             return jsonify({'error': 'Failed to complete the payment'}), 500
 
-    @app.route('loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf/')
+    @app.route('/loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf/')
     def loaderio_verification():
         return 'loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf'
 
