@@ -7,6 +7,7 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const transactionFee = 0.01;
   const minWithdraw = 0.019;
   const maxWithdraw = userBalance - transactionFee;
@@ -49,6 +50,7 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
     const transID = Math.floor(Math.random() * 1000000000);
 
     try {
+      setIsLoading(true); // Set loading state to true before making the API request
       const response = await axios.post(
         'http://localhost:5000/api/withdraw',
         {
@@ -66,10 +68,23 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
         setPaymentStatus('Withdrawal successful');
         updateUserBalance(response.data.balance);
         setAmount('');
+        setIsLoading(false); //
+      }else {
+        setPaymentStatus('Withdrawal failed');
+        setErrorMessage(response.data.error);
+        setIsLoading(false); // Set loading state to false in case of an error
+        setTimeout(() => {
+          setErrorMessage('');
+        }, 3000);
       }
     } catch (error) {
       alert('Server currently under maintenance. Please try again later.');
+      setErrorMessage(error.message);
       console.error('Error:', error);
+      setIsLoading(false); // Set loading state to false in case of an error
+      setTimeout(() => {
+        setErrorMessage('');
+      }, 3000);
     }
   };
 
@@ -91,9 +106,13 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
           max={maxWithdraw}
           step="0.001"
         />
-        <button onClick={handleWithdraw} disabled={!isAuthenticated}>
-          Withdraw
-        </button>
+        {isLoading ? (
+          <div className="loading-spinner">Processing...</div>
+        ) : (
+          <button onClick={handleWithdraw} disabled={!isAuthenticated}>
+            Withdraw
+          </button>
+        )}
       </div>
       {errorMessage && <div className="error-message">{errorMessage}</div>}
       {paymentStatus && <p className="payment-status">Payment Status: {paymentStatus}</p>}
