@@ -225,35 +225,6 @@ def create_app(config_path):
             return False
 
 
-    @app.route('/signin', methods=['POST'])
-    def signin():
-        auth_result = request.json['authResult']
-        access_token = auth_result['accessToken']
-
-        try:
-            # Verify with the user's access token
-            headers = {'Authorization': f'Bearer {access_token}'}
-            response = requests.get(f"{app.config['BASE_URL']}/me", headers=headers)
-            response.raise_for_status()
-            user_data = response.json()
-
-            # if status is not 200, return an error message
-            if response.status_code != 200:
-                return jsonify({'error': 'Invalid authorization'}), 401
-
-            # Store user data in the database
-            user = update_user_data(user_data)
-
-            # Generate JWT token for the user
-            jwt_token = create_access_token(identity=user.uid)
-
-            logging.info(colorama.Fore.GREEN + f"SIGNIN: User {user.username} signed in successfully")
-            return jsonify({'access_token': jwt_token}), 200
-        except requests.exceptions.RequestException as err:
-            logging.error(err)
-            return jsonify({'error': 'User not authorized'}), 401
-
-
     @app.route("/create_deposit", methods=["POST"], endpoint="create_deposit")
     @jwt_required()
     def create_deposit():
@@ -313,6 +284,142 @@ def create_app(config_path):
             logging.error(err)
             return jsonify({'error': 'Failed to create deposit'}), 500
 
+
+    @app.route("/create_withdrawal", methods=["POST"], endpoint="create_withdrawal")
+    @jwt_required()
+    def create_withdrawal():
+        try:
+            user_id = get_jwt_identity()
+            data = request.get_json()
+            trans_fee = 0.01 # Fetch from db or api
+            amount = float(data["amount"]) + trans_fee
+
+            # Check if the user exists
+            user = User.query.filter_by(uid=user_id).first()
+            if user is None:
+                if app.config['DEBUG'] == True:
+                    logging.error(colorama.Fore.RED + f"ERROR: User not found. Unable to create withdrawal for user: {user_id}")
+                return jsonify({'error': 'User not found. Unable to create withdrawal'}), 404
+
+            # Check if the amount is a positive number
+            if amount <= 0:
+                return jsonify({'error': 'Invalid amount. Amount must be a positive number'}), 400
+
+            # Check if minimum withdrawal amount is met (0.019)
+            if amount < 0.019:
+                return jsonify({'error': 'Invalid amount. Minimum withdrawal amount is 0.019'}), 400
+
+            # Get user's balance
+            if user.balance < amount:
+                return jsonify({'error': 'Insufficient balance'}), 400
+
+            # Get app wallet balance, if none, set to 0
+            app_wallet_balance = pi_network.get_balance()
+
+            if app_wallet_balance is None:
+                logging.error(colorama.Fore.RED + f"PAYMENT ERROR: Failed to get app wallet balance. Unable to create withdrawal for user: {user.username}")
+                app_wallet_balance = 0
+
+            # Check if the app wallet has enough balance to process the withdrawal
+            if app_wallet_balance < amount:
+                logging.error(colorama.Fore.RED + f"PAYMENT ERROR: **Insufficient balance in app wallet. Unable to create withdrawal for user: {user.username} in the amount of {amount}**")
+                return jsonify({'error': 'Server is currently under maintenance. Please try again later'}), 503
+
+            withdrawal_id = str(uuid.uuid4())
+
+            # get last 6 digits of user id
+            last6uid = user_id[-6:]
+
+            # Generate memo and metadata
+            memo = f"Withdrawal from Uni Pi Games account# {last6uid}"
+            metadata = {
+                "app_version": f"{app.config['app_version']}",
+                "withdrawal_id": withdrawal_id
+            }
+
+            # if debug mode is enabled, append "test: true" to the metadata
+            if app.config['DEBUG'] == True:
+                metadata["test"] = True
+
+            payment_data = {
+                "payment": {
+                    "amount": amount,
+                    "memo": memo,
+                    "metadata": metadata,
+                    "uid": user_id
+                }
+            }
+
+            # Create a transaction record
+            transaction = create_transaction(user_id=user.id, ref_id=None, wallet_id=None, amount=float(amount), transaction_type='withdrawal', memo=str(memo), status='pending', id=withdrawal_id, transactionData=payment_data)
+
+            if transaction is None:
+                if app.config['DEBUG'] == True:
+                    logging.error(colorama.Fore.RED + f"ERROR: Failed to create transaction for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
+                return jsonify({'error': 'Failed to create transaction'}), 500
+
+            headers = {
+                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+
+            # Get transaction from db using withdrawal_id in pending status to not overpay
+            payment = Transaction.query.filter_by(id=withdrawal_id, status='pending').first()
+
+            if payment is None:
+                if app.config['DEBUG'] == True:
+                    logging.error(colorama.Fore.RED + f"ERROR: Failed to create withdrawal for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}. Payment not found or already completed")
+                return jsonify({'error': 'Failed to create withdrawal. Server error. Please try again later or contact support for assistance'}), 500
+
+            payment_id = pi_network.create_payment(payment_data['payment'])
+
+            if payment_id is None:
+                logging.error(colorama.Fore.RED + f"ERROR: Failed to create withdrawal for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}.")
+                return jsonify({'error': 'Failed to create withdrawal. Server error. Please try again later or contact support for assistance'}), 500
+
+
+            logging.info(colorama.Fore.GREEN + f"WITHDRAWAL: Withdrawal started for user : {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
+            print(payment_id)
+
+            #Update the transaction status to pending
+            payment.status = 'approved'
+            payment.ref_id = payment_id
+            db.session.commit()
+
+            # Approve the transaction
+            txid = pi_network.submit_payment(payment_id, False)
+
+            print(txid)  # Debugging
+            # if response status is not 200, return an error
+            if txid is None:
+                logging.error(colorama.Fore.RED + f"ERROR: Approve payment failed. Failed to approve payment. Payment ID: {withdrawal_id}.")
+                return jsonify({'error': 'Failed to approve payment'}), 500
+
+            #Complete the transaction
+            paymentData = pi_network.complete_payment(payment_id, txid)
+
+            print(paymentData)  # Debugging
+
+            # if paymentData is None:
+            #     logging.error(colorama.Fore.RED + f"ERROR: Failed to complete transaction for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
+            #     return jsonify({'error': 'Failed to complete transaction'}), 500
+
+            if not complete_transaction(payment.id, txid):
+                if app.config['DEBUG'] == True:
+                    logging.error(colorama.Fore.RED + f"ERROR: Failed to complete transaction for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
+                return jsonify({'error': 'Failed to complete transaction'}), 500
+
+            logging.info(colorama.Fore.GREEN + f"APPROVE: Withdrawl approved successfully for user: {user.username} with amount: {amount}. Payment ID: {withdrawal_id}")
+
+            # Get new user balance
+            user = User.query.filter_by(uid=user_id).first()
+            user_balance = user.balance
+
+            return jsonify({'message': 'Withdrawal Completed Successfully', 'balance': user_balance}), 200
+
+        except requests.exceptions.RequestException as err:
+            logging.error(err)
+            return jsonify({'error': 'Failed to create withdrawal'}), 500
 
     @app.route("/approve_payment/<payment_id>", methods=["POST"], endpoint="approve_payment")
     def approve_payment(payment_id):
@@ -387,7 +494,7 @@ def create_app(config_path):
                 "Authorization": f"Key {app.config['SERVER_API_KEY']}",
                 "Content-Type": "application/json"
             }
-            response = requests.post(f"{app.config['BASE_URL']}/payments/" + payment_id + "/approve/", headers=headers)
+            response = requests.post(f"{app.config['BASE_URL']}/v2/payments/" + payment_id + "/approve/", headers=headers)
 
             # Save contents to json file localy using payment_id as filename
             with open(f"resources/approvals/{payment_id}_approval.json", "w") as f:
@@ -486,30 +593,131 @@ def create_app(config_path):
             logging.error(colorama.Fore.RED + f"ERROR: Complete payment failed. {str(err)}")
             return jsonify({'error': 'Failed to complete payment'}), 500
 
-
-
-    @app.route('/incomplete', methods=['POST'])
-    @jwt_required()
-    def handle_incomplete_payment():
-        payment = request.json['payment']
-        payment_id = payment['identifier']
-        txid = payment.get('transaction', {}).get('txid')
-        tx_url = payment.get('transaction', {}).get('_link')
-
-        # TODO: Verify the payment details (e.g., amount, memo) against your database
-        # TODO: Mark the order as paid in your database if the payment is valid
+    @app.route('/signin', methods=['POST'])
+    def signin():
+        auth_result = request.json['authResult']
+        access_token = auth_result['accessToken']
 
         try:
-            # Let Pi Servers know that the payment is completed
-            headers = {'Authorization': f"Key {app.config['SERVER_API_KEY']}"}
-            payload = {'txid': txid}
-            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json=payload, headers=headers)
+            # Verify with the user's access token
+            headers = {'Authorization': f'Bearer {access_token}'}
+            response = requests.get(f"{app.config['BASE_URL']}/v2/me", headers=headers)
             response.raise_for_status()
+            user_data = response.json()
 
-            return jsonify({'message': f'Handled the incomplete payment {payment_id}'}), 200
+            # if status is not 200, return an error message
+            if response.status_code != 200:
+                return jsonify({'error': 'Invalid authorization'}), 401
+
+            # Check if response user data is not empty
+            if user_data is None:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Store user data in the database
+            user = update_user_data(user_data)
+
+            # Generate JWT token for the user
+            jwt_token = create_access_token(identity=user.uid)
+
+            logging.info(colorama.Fore.GREEN + f"SIGNIN: User {user.username} signed in successfully")
+            return jsonify({'access_token': jwt_token}), 200
         except requests.exceptions.RequestException as err:
             logging.error(err)
-            return jsonify({'error': 'Failed to complete the payment'}), 500
+            return jsonify({'error': 'User not authorized'}), 401
+
+
+
+    @app.route('/incomplete/<payment_id>', methods=['POST'])
+    @jwt_required()
+    def handle_incomplete_payment(payment_id):
+        # Get post data
+        data = request.get_json()
+
+        payment_id = data['payment']['identifier'] if 'identifier' in data['payment'] else None
+        amount = data['payment']['amount'] if 'amount' in data['payment'] else 0
+        user_id = data['payment']['user_uid'] if 'user_uid' in data['payment'] else None
+        txid=None
+
+        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Incomplete payment received for user: {user_id}. Payment ID: {payment_id}. Amount: {amount}")
+
+        try:
+            trans_type = data['payment']['metadata']['transType']
+        except KeyError:
+            trans_type="deposit"
+
+        try:
+            txid = data['payment']['transaction']['txid']
+        except KeyError:
+            txid=None
+
+        statuses = data['payment']['status'] if 'status' in data['payment'] else None
+
+        deposit_id = data['payment']['metadata']['deposit_id'] if 'deposit_id' in data['payment']['metadata'] else None
+
+        # Check if the payment exists
+        payment = Transaction.query.filter_by(id=deposit_id).first()
+
+        # if payment is not found, return an error
+        if payment is None:
+            if app.config['DEBUG'] == True:
+                logging.error(colorama.Fore.RED + f"ERROR: Incomplete payment not found for user: {user_id}. Payment ID: {deposit_id}")
+
+            return jsonify({'error': 'Payment not found. Please contact support for assistance. Payment ID: {deposit_id}'}), 404
+
+        # Check if payment status is not approved, return an error, else approve the payment
+        if payment.status != 'approved':
+            if app.config['DEBUG'] == True:
+                logging.error(colorama.Fore.RED + f"ERROR: Incomplete payment not approved for user: {user_id}. Payment ID: {deposit_id}")
+
+            return jsonify({'error': 'Payment not approved or already completed. Please contact support for assistance. Payment ID: {deposit_id}'}), 400
+
+        # Update the transaction status to pending
+        headers = {
+            "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+            "Content-Type": "application/json"
+        }
+
+        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Payment already approved for user: {user_id} in database. Payment ID: {deposit_id}. Submitting to server")
+
+        response = requests.post(f"{app.config['BASE_URL']}/v2/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
+
+        # Save contents to json file localy using payment_id as filename
+        with open(f"resources/confirmations/{payment_id}_confirmed.json", "w") as f:
+            json.dump(response.json(), f)
+
+        if response.status_code != 200:
+            if app.config['DEBUG'] == True:
+                logging.error(colorama.Fore.RED + f"ERROR: Failed to complete payment for user: {user_id}. Payment ID: {deposit_id}")
+                logging.error(colorama.Fore.RED + f"ERROR: Response: {response.content}")
+            # Need to alert admins of manual intervention
+            return jsonify({'error': 'Failed to complete payment'}), 500
+
+
+        # Update status to completed if developer_approved and transaction_verified are true
+        if statuses['developer_approved'] and statuses['transaction_verified']:
+
+            headers = {
+                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+
+            logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Payment approved for user: {user_id}. Payment ID: {deposit_id}. Submitting to server")
+            response = requests.post(f"{app.config['BASE_URL']}/v2/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
+
+            # Save contents to json file localy using payment_id as filename
+            with open(f"resources/confirmations/{deposit_id}_confirmed.json", "w") as f:
+                json.dump(response.json(), f)
+
+            if response.status_code != 200:
+                return jsonify({'error': 'Failed to complete payment'}), 500
+
+            # Complete the transaction
+            if not complete_transaction(payment.id, txid):
+                return jsonify({'error': 'Failed to complete transaction'}), 500
+
+        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Incomplete payment completed for user: {user_id}. Payment ID: {deposit_id}. Amount: {amount}")
+        # Return success message
+        return jsonify({'message': 'Payment completed successfully'}), 200
 
     @app.route('/loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf/')
     def loaderio_verification():
@@ -641,7 +849,7 @@ def create_app(config_path):
             "Authorization": f"Key {app.config['SERVER_API_KEY']}",
             "Content-Type": "application/json"
         }
-        response = requests.post(f"{app.config['BASE_URL']}/payments", json=payment_data, headers=headers)
+        response = requests.post(f"{app.config['BASE_URL']}/v2/payments", json=payment_data, headers=headers)
         return jsonify(response.json())
 
     @app.route("/get_payment/<payment_id>", methods=["GET"], endpoint="get_payment")
@@ -649,7 +857,7 @@ def create_app(config_path):
         headers = {
             "Authorization": f"Key {app.config['SERVER_API_KEY']}"
         }
-        response = requests.get(f"{app.config['BASE_URL']}/payments/{payment_id}", headers=headers)
+        response = requests.get(f"{app.config['BASE_URL']}/v2/payments/{payment_id}", headers=headers)
         return jsonify(response.json())
 
 
@@ -660,101 +868,8 @@ def create_app(config_path):
         headers = {
             "Authorization": f"Key {app.config['SERVER_API_KEY']}"
         }
-        response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/cancel", headers=headers)
+        response = requests.post(f"{app.config['BASE_URL']}/v2/payments/{payment_id}/cancel", headers=headers)
         return jsonify(response.json())
-
-    @app.route("/incomplete_server_payment/<payment_id>", methods=["POST"], endpoint="incomplete_server_payment")
-    def incomplete_server_payment(payment_id):
-
-        # Get post data
-        data = request.get_json()
-
-        payment_id = data['payment']['identifier'] if 'identifier' in data['payment'] else None
-        amount = data['payment']['amount'] if 'amount' in data['payment'] else 0
-        user_id = data['payment']['user_uid'] if 'user_uid' in data['payment'] else None
-        txid=None
-
-        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Incomplete payment received for user: {user_id}. Payment ID: {payment_id}. Amount: {amount}")
-
-        try:
-            trans_type = data['payment']['metadata']['transType']
-        except KeyError:
-            trans_type="deposit"
-
-        try:
-            txid = data['payment']['transaction']['txid']
-        except KeyError:
-            txid=None
-
-        statuses = data['payment']['status'] if 'status' in data['payment'] else None
-
-        deposit_id = data['payment']['metadata']['deposit_id'] if 'deposit_id' in data['payment']['metadata'] else None
-
-        # Check if the payment exists
-        payment = Transaction.query.filter_by(id=deposit_id).first()
-
-        # if payment is not found, return an error
-        if payment is None:
-            if app.config['DEBUG'] == True:
-                logging.error(colorama.Fore.RED + f"ERROR: Incomplete payment not found for user: {user_id}. Payment ID: {deposit_id}")
-
-            return jsonify({'error': 'Payment not found. Please contact support for assistance. Payment ID: {deposit_id}'}), 404
-
-        # Check if payment status is not approved, return an error, else approve the payment
-        if payment.status != 'approved':
-            if app.config['DEBUG'] == True:
-                logging.error(colorama.Fore.RED + f"ERROR: Incomplete payment not approved for user: {user_id}. Payment ID: {deposit_id}")
-
-            return jsonify({'error': 'Payment not approved or already completed. Please contact support for assistance. Payment ID: {deposit_id}'}), 400
-
-        # Update the transaction status to pending
-        headers = {
-            "Authorization": f"Key {app.config['SERVER_API_KEY']}",
-            "Content-Type": "application/json"
-        }
-
-        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Payment already approved for user: {user_id} in database. Payment ID: {deposit_id}. Submitting to server")
-
-        response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
-
-        # Save contents to json file localy using payment_id as filename
-        with open(f"resources/confirmations/{payment_id}_confirmed.json", "w") as f:
-            json.dump(response.json(), f)
-
-        if response.status_code != 200:
-            if app.config['DEBUG'] == True:
-                logging.error(colorama.Fore.RED + f"ERROR: Failed to complete payment for user: {user_id}. Payment ID: {deposit_id}")
-                logging.error(colorama.Fore.RED + f"ERROR: Response: {response.content}")
-            # Need to alert admins of manual intervention
-            return jsonify({'error': 'Failed to complete payment'}), 500
-
-
-        # Update status to completed if developer_approved and transaction_verified are true
-        if statuses['developer_approved'] and statuses['transaction_verified']:
-
-            headers = {
-                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
-                "Content-Type": "application/json"
-            }
-
-            logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Payment approved for user: {user_id}. Payment ID: {deposit_id}. Submitting to server")
-            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
-
-            # Save contents to json file localy using payment_id as filename
-            with open(f"resources/confirmations/{deposit_id}_confirmed.json", "w") as f:
-                json.dump(response.json(), f)
-
-            if response.status_code != 200:
-                return jsonify({'error': 'Failed to complete payment'}), 500
-
-            # Complete the transaction
-            if not complete_transaction(payment.id, txid):
-                return jsonify({'error': 'Failed to complete transaction'}), 500
-
-        logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Incomplete payment completed for user: {user_id}. Payment ID: {deposit_id}. Amount: {amount}")
-        # Return success message
-        return jsonify({'message': 'Payment completed successfully'}), 200
-
 
     @app.route("/api/ticket-details", methods=["GET"])
     @jwt_required()
