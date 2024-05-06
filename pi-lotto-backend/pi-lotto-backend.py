@@ -358,11 +358,6 @@ def create_app(config_path):
                     logging.error(colorama.Fore.RED + f"ERROR: Failed to create transaction for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
                 return jsonify({'error': 'Failed to create transaction'}), 500
 
-            headers = {
-                "Authorization": f"Key {app.config['SERVER_API_KEY']}",
-                "Content-Type": "application/json"
-            }
-
             # Get transaction from db using withdrawal_id in pending status to not overpay
             payment = Transaction.query.filter_by(id=withdrawal_id, status='pending').first()
 
@@ -379,7 +374,6 @@ def create_app(config_path):
 
 
             logging.info(colorama.Fore.GREEN + f"WITHDRAWAL: Withdrawal started for user : {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
-            print(payment_id)
 
             #Update the transaction status to pending
             payment.status = 'approved'
@@ -389,7 +383,7 @@ def create_app(config_path):
             # Approve the transaction
             txid = pi_network.submit_payment(payment_id, False)
 
-            print(txid)  # Debugging
+
             # if response status is not 200, return an error
             if txid is None:
                 logging.error(colorama.Fore.RED + f"ERROR: Approve payment failed. Failed to approve payment. Payment ID: {withdrawal_id}.")
@@ -398,11 +392,9 @@ def create_app(config_path):
             #Complete the transaction
             paymentData = pi_network.complete_payment(payment_id, txid)
 
-            print(paymentData)  # Debugging
-
-            # if paymentData is None:
-            #     logging.error(colorama.Fore.RED + f"ERROR: Failed to complete transaction for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
-            #     return jsonify({'error': 'Failed to complete transaction'}), 500
+            if paymentData is None:
+                logging.error(colorama.Fore.RED + f"ERROR: Failed to complete transaction for user: {user.username} in the amount of {amount}. Payment ID: {withdrawal_id}")
+                return jsonify({'error': 'Failed to complete transaction'}), 500
 
             if not complete_transaction(payment.id, txid):
                 if app.config['DEBUG'] == True:
@@ -627,8 +619,7 @@ def create_app(config_path):
 
 
 
-    @app.route('/incomplete/<payment_id>', methods=['POST'])
-    @jwt_required()
+    @app.route('/incomplete/<payment_id>', methods=['POST'], endpoint="incomplete")
     def handle_incomplete_payment(payment_id):
         # Get post data
         data = request.get_json()

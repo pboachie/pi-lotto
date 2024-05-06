@@ -148,6 +148,9 @@ class PiNetwork:
         re = requests.post(url,data=obj,json=obj,headers=self.get_http_headers())
         self.handle_http_response(re)
 
+        if re.status_code == 200:
+            return True
+
     def cancel_payment(self, identifier):
         obj = {}
         obj = json.dumps(obj)
