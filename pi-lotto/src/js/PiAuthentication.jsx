@@ -53,7 +53,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
     try {
       // Get paymentId
       const paymentId = payment.identifier;
-      const response = await axios.post('http://localhost:5000/incomplete_server_payment/'+ paymentId, { payment });
+      const response = await axios.post('http://localhost:5000/incomplete/'+ paymentId, { payment });
 
       if (response.status !== 200) {
         console.error('Incomplete payment error:', response.data.error);
