@@ -7,34 +7,45 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const minDeposit = 0.25;
 
   const handleDeposit = async () => {
     if (!isAuthenticated) {
-      console.error('User not authenticated');
+      setErrorMessage('User not authenticated');
+      window.location.reload();
       return;
     }
 
     const parsedAmount = parseFloat(amount);
 
-    // Check if number is not null or blank and is numeric
-    if (parsedAmount && !isNaN(parsedAmount)) {
-      if (parsedAmount < 0.25) {
-        setErrorMessage('Amount must be at least 0.25');
-        document.querySelector('.pi-deposit input').select();
-        setTimeout(() => {
-          setErrorMessage('');
-        }, 3000); // Clear the error message after 3 seconds
-        return;
-      }
-    } else {
-      setErrorMessage('Please enter an amount to deposit');
-      document.querySelector('.pi-deposit input').focus();
+    if (isNaN(parsedAmount)) {
+      setErrorMessage('Please enter a valid number');
+      document.querySelector('.pi-deposit input').select();
       setTimeout(() => {
         setErrorMessage('');
-      }, 3000); // Clear the error message after 3 seconds
+      }, 3000);
       return;
     }
 
+    if (parsedAmount < minDeposit) {
+      setErrorMessage(`Amount must be at least ${minDeposit}`);
+      document.querySelector('.pi-deposit input').select();
+      setTimeout(() => {
+        setErrorMessage('');
+      }, 3000);
+      return;
+    }
+
+    setErrorMessage('');
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmDeposit = async () => {
+    setShowConfirmation(false);
+    setIsLoading(true);
 
     const fetchUserBalance = async () => {
       try {
@@ -56,120 +67,145 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
       }
     };
 
-    const transID = Math.floor(Math.random() * 1000000000);
-
     try {
-      const paymentData = {
-        amount: parsedAmount,
-        memo: 'Deposit to Pi-Lotto',
-        metadata: {
-          locTransID: transID,
-          dateCreated: new Date().toISOString(),
-          transType: 'deposit'
-        },
+
+      // Create the payment data
+      const requestData = {
+        amount: parseFloat(amount),
+        dateCreated: new Date().toISOString()
       };
 
+      const requestAmount = parseFloat(amount);
+
+      if (requestAmount < minDeposit) {
+        setErrorMessage(`Amount must be at least ${minDeposit}`);
+        document.querySelector('.pi-deposit input').select();
+        setTimeout(() => {
+          setErrorMessage('');
+        }, 3000);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get payment data from the server
+      const getPaymentData = await axios.post('http://localhost:5000/create_deposit', requestData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`
+        },
+      });
+
+      if (getPaymentData.status !== 200) {
+        console.error('Payment data error:', getPaymentData.data.error);
+        setPaymentStatus('ERROR: ' + getPaymentData.data.error);
+        setIsLoading(false);
+        return;
+      }
+
+      setPaymentStatus('Payment requires user approval');
+
+      const paymentData = getPaymentData.data;
+
+      // Define the payment callbacks
       const callbacks = {
         onReadyForServerApproval: async (paymentId) => {
-
           try {
-
             const header = {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + localStorage.getItem('@pi-lotto:access_token')
-            }
-
-            console.log()
+              Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+            };
 
             // Send the payment data to the backend for server-side approval
-            const response = await axios.post('http://localhost:5000/approve_payment/'+ paymentId, { paymentData }, { headers: header });
+            const response = await axios.post(
+              `http://localhost:5000/approve_payment/${paymentId}`,
+              { paymentData },
+              { headers: header }
+            );
 
             if (response.status !== 200) {
               console.error('Payment approval error:', response.data.error);
               setPaymentStatus('ERROR: ' + response.data.error);
+              setIsLoading(false);
               return false;
             }
 
-            // const response = await window.Pi.getPayment(paymentId);
             console.log('Payment approved:', response.data);
             setPaymentStatus('Completing payment...');
             return true;
-
           } catch (error) {
             console.error('Payment approval error:', error);
             setPaymentStatus('error');
+            setIsLoading(false);
           }
         },
         onReadyForServerCompletion: async (paymentId, txid) => {
           try {
-            // Send the paymentId and txid to the backend for server-side completion
             const header = {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + localStorage.getItem('@pi-lotto:access_token')
-            }
+              Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+            };
 
             console.log('Payment ID:', paymentId);
             console.log('TXID:', txid);
 
-            const response = await axios.post('http://localhost:5000/complete_payment/'+ paymentId, { paymentId, txid }, { headers: header });
+            const response = await axios.post(
+              `http://localhost:5000/complete_payment/${paymentId}`,
+              { paymentData, paymentId, txid },
+              { headers: header }
+            );
 
             if (response.status !== 200) {
               console.error('Payment completion error:', response.data.error);
               setPaymentStatus('ERROR: ' + response.data.error);
-
-              // Cancel the payment
               await window.Pi.cancelPayment(paymentId);
+              setIsLoading(false);
               return false;
             }
 
             console.log('Payment completed:', response.data);
             setPaymentStatus('Payment Transfer Complete!');
 
-            // Update the user balance
             const updatedBalance = await fetchUserBalance();
             if (updatedBalance !== null) {
               updateUserBalance(updatedBalance);
-
-              // Apply the balance animation effect
-              const balanceElement = document.querySelector('.user-info .user-details span:last-child');
-              const prevBalance = userBalance;
-
-              if (updatedBalance > prevBalance) {
-                balanceElement.classList.add('balance-increase');
-              } else if (updatedBalance < prevBalance) {
-                balanceElement.classList.add('balance-decrease');
-              }
-
+              setSuccessMessage('Deposit processed successfully!');
               setTimeout(() => {
-                balanceElement.classList.remove('balance-increase', 'balance-decrease');
-              }, 500);
+                setSuccessMessage('');
+              }, 3000);
             }
 
-            // Clear form input
             setAmount('');
-
+            setIsLoading(false);
             return true;
           } catch (error) {
             console.error('Payment completion error:', error);
             setPaymentStatus('error');
+            setIsLoading(false);
           }
         },
         onCancel: (paymentId) => {
           console.log('Payment cancelled:', paymentId);
           setPaymentStatus('Payment cancelled');
+          setIsLoading(false);
         },
         onError: (error, payment) => {
           console.error('Payment error:', payment);
           console.error('Payment error:', error);
           setPaymentStatus('error');
+          setIsLoading(false);
         },
       };
 
-      const paymentId = await window.Pi.createPayment(paymentData, callbacks);
-      console.log('Payment created with ID:', paymentId);
+      // Create the payment on behalf of the user
+      await window.Pi.createPayment(paymentData, callbacks);
+
     } catch (error) {
       console.error('Error:', error);
+      setIsLoading(false);
     }
+  };
+
+  const handleCancelDeposit = () => {
+    setShowConfirmation(false);
   };
 
   return (
@@ -178,18 +214,44 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
       <div className="input-group">
         <input
           type="number"
-          placeholder="Amount (min 0.25)"
+          placeholder={`Amount (min ${minDeposit})`}
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          min="0.25"
-          step="0.01"
+          onChange={(e) => {
+            setAmount(e.target.value);
+            setErrorMessage('');
+          }}
+          min={minDeposit}
+          step="0.001"
+          aria-label="Deposit Amount"
+          required
         />
-        <button onClick={handleDeposit} disabled={!isAuthenticated}>
-          Deposit
+        <button onClick={handleDeposit} disabled={!isAuthenticated || isLoading}>
+          {isLoading ? 'Processing...' : 'Deposit'}
         </button>
       </div>
-      {errorMessage && <div className="error-message">{errorMessage}</div>}
+      {errorMessage && (
+        <div className="error-message" role="alert">
+          {errorMessage}
+        </div>
+      )}
+      {successMessage && (
+        <div className="success-message" role="status">
+          {successMessage}
+        </div>
+      )}
       {paymentStatus && <p className="payment-status">Payment Status: {paymentStatus}</p>}
+      {showConfirmation && (
+        <div className="confirmation-dialog" role="dialog" aria-modal="true">
+          <div className="confirmation-content">
+            <h3>Confirm Deposit</h3>
+            <p>Amount: {amount}</p>
+            <div className="confirmation-buttons">
+              <button onClick={handleConfirmDeposit}>Confirm</button>
+              <button onClick={handleCancelDeposit}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       <button className="close-button" onClick={onClose}>
         Close
       </button>

@@ -2,7 +2,7 @@ app:
   debug: true
   host: 'localhost'
   port: 5000
-  vesion: '0.0.1'
+  version: '0.0.1'
 
 database:
   uri: 'sqlite:///pilotto.db'

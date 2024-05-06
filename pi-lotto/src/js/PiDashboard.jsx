@@ -4,6 +4,7 @@ import Lotto from "./Lotto";
 import PiAuthentication from "./PiAuthentication";
 import SideMenu from "./SideMenu";
 import PiDeposit from "./PiDeposit";
+import PiWithdraw from "./PiWithdraw";
 import PurchaseModal from './PurchaseModal';
 
 
@@ -21,6 +22,8 @@ function PiLotto() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDepositVisible, setIsDepositVisible] = useState(false);
+  const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
+  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [isPurchaseModalVisible, setIsPurchaseModalVisible] = useState(false);
   const userIconRef = useRef(null);
 
@@ -101,6 +104,7 @@ function PiLotto() {
 
   const handleCloseComponents = () => {
     setIsDepositVisible(false);
+    setIsWithdrawVisible(false);
     setIsPurchaseModalVisible(false);
     setSelectedGame(null);
   };
@@ -143,11 +147,18 @@ function PiLotto() {
   };
 
   const handleWithdraw = () => {
-    // Implement withdraw functionality
-    console.log("Withdraw clicked");
+
+    // Close other components
+    handleCloseComponents();
+
+    setIsWithdrawVisible(true);
   };
 
   const handleLogout = () => {
+    setIsLogoutModalVisible(true);
+  };
+
+  const handleConfirmLogout = () => {
     // Clear the access token from the local storage
     localStorage.removeItem("@pi-lotto:access_token");
 
@@ -165,10 +176,16 @@ function PiLotto() {
     // Reset the selected game
     setSelectedGame(null);
 
-    // reset the deposit visibility
+    // Reset the visibility of the components
     setIsDepositVisible(false);
+    setIsWithdrawVisible(false);
 
-    alert("You have been logged out.");
+    // Close the logout modal
+    setIsLogoutModalVisible(false);
+  };
+
+  const handleCancelLogout = () => {
+    setIsLogoutModalVisible(false);
   };
 
   const renderMainContent = () => {
@@ -195,6 +212,10 @@ function PiLotto() {
 
     }
 
+    if (isWithdrawVisible) {
+      return <PiWithdraw onClose={() => setIsWithdrawVisible(false)} isAuthenticated={isAuthenticated} userBalance={userBalance} updateUserBalance={updateUserBalance} />;
+    }
+
     return (
       <div className="home-page">
         <h2>Current Local Time:</h2>
@@ -209,7 +230,7 @@ function PiLotto() {
         <button className="menu-btn" onClick={toggleSideMenu}>
           <FaBars />
         </button>
-        <h1>Pi-Lotto</h1>
+        <h1>Uni Pi Games</h1>
         {isAuthenticated && (
           <div className="user-info">
             <div className="user-details">
@@ -243,6 +264,19 @@ function PiLotto() {
           onClose={toggleSideMenu}
           onCloseComponents={handleCloseComponents}
         />
+      )}
+
+      {isLogoutModalVisible && (
+        <div className="logout-modal"> 
+          <div className="logout-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <div className="logout-modal-buttons">
+              <button onClick={handleConfirmLogout}>OK</button>
+              <button onClick={handleCancelLogout}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {isPurchaseModalVisible && (

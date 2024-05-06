@@ -81,3 +81,10 @@ class UserScopes(db.Model):
     scope = db.Column(db.String(20), nullable=False)
     active = db.Column(db.Boolean, default=True)
     dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+class TransactionData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    transaction_id = db.Column(db.String(100), db.ForeignKey('transaction.id'), nullable=False)
+    data = db.Column(db.JSON, nullable=False)
+    dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
+    dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
