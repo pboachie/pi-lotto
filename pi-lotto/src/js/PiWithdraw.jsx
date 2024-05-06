@@ -58,14 +58,11 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
     setShowConfirmation(false);
     setIsLoading(true);
 
-    const transID = Math.floor(Math.random() * 1000000000);
-
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/withdraw',
+        'http://localhost:5000/create_withdrawal',
         {
-          amount: parseFloat(amount),
-          transID,
+          amount: parseFloat(amount)
         },
         {
           headers: {
@@ -77,10 +74,10 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
       if (response.status === 200) {
         setPaymentStatus('Withdrawal successful');
         updateUserBalance(response.data.balance);
-        setSuccessMessage('Withdrawal processed successfully!');
+        setSuccessMessage('Withdrawal processed successfully!. Please check your wallet.');
         setTimeout(() => {
           setSuccessMessage('');
-        }, 3000);
+        }, 6000);
         setAmount('');
       }
     } catch (error) {
@@ -117,6 +114,7 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
           step="0.001"
           aria-label="Withdrawal Amount"
           required
+          disabled={isLoading}
         />
         <button onClick={handleWithdraw} disabled={!isAuthenticated || isLoading}>
           {isLoading ? 'Processing...' : 'Withdraw'}
@@ -147,9 +145,15 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
           </div>
         </div>
       )}
-      <button className="close-button" onClick={onClose}>
-        Close
-      </button>
+      {isLoading ? (
+        <div className="loading-modal">
+          <div className="spinner"></div>
+        </div>
+      ) : (
+        <button className="close-button" onClick={onClose} disabled={isLoading}>
+          Close
+        </button>
+      )}
     </div>
   );
 };
