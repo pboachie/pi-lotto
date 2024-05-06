@@ -10,7 +10,7 @@ database:
 
 api:
   server_api_key: 'CHANGE_ME'
-  base_url: 'https://api.minepi.com/v2'
+  base_url: 'https://api.minepi.com'
   app_wallet_seed: 'CHANGE_ME'
   app_wallet_address: 'CHANGE_ME'
   # Pi Network" | "Pi Testnet
