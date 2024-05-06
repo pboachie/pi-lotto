@@ -572,7 +572,7 @@ def create_app(config_path):
                 "Authorization": f"Key {app.config['SERVER_API_KEY']}",
                 "Content-Type": "application/json"
             }
-            response = requests.post(f"{app.config['BASE_URL']}/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
+            response = requests.post(f"{app.config['BASE_URL']}/v2/payments/{payment_id}/complete", json={"txid": txid}, headers=headers)
 
             # Save contents to json file localy using payment_id as filename ({payment_id}_confirmed.json) in path resources/confirmations/
             with open(f"resources/confirmations/{req_depost_id}_confirmed.json", "w") as f:
