@@ -115,12 +115,12 @@ class GameType(db.Model):
 
 class GameConfig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=True)
     game_type_id = db.Column(db.Integer, db.ForeignKey('game_type.id'), nullable=False)
     config_key = db.Column(db.String(100), nullable=False)
     config_value = db.Column(db.String(255), nullable=False)
     dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
     dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
-
 
 if __name__ == '__main__':
     with app.app_context():
