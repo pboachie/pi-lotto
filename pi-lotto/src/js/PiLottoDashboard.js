@@ -58,7 +58,6 @@ function PiLottoDashboard() {
       <h2>Pi-Lotto Games</h2>
       <div className="game-list">
         {games.map((game) => {
-          console.log(game);
           const drawSchedule = JSON.parse(game.game_config.draw_schedule);
 
           return (

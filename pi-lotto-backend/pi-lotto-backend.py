@@ -994,10 +994,14 @@ def create_app(config_path):
 
         data = request.json
         game_type_id = data.get('game_type_id')
+        game_id = data.get('game_id')
         configs = data.get('configs')
 
         if not game_type_id or not configs:
             return jsonify({'error': 'Missing required fields'}), 400
+
+        if not game_id and not Game.query.get(game_id):
+            return jsonify({'error': 'Invalid game'}), 400
 
         game_type = GameType.query.get(game_type_id)
         if not game_type:
@@ -1011,6 +1015,7 @@ def create_app(config_path):
                 return jsonify({'error': 'Missing required fields in configuration'}), 400
 
             game_config = GameConfig(
+                game_id=game_id,
                 game_type_id=game_type_id,
                 config_key=config_key,
                 config_value=config_value
@@ -1050,21 +1055,51 @@ def create_app(config_path):
             })
         return jsonify(result), 200
 
-    @app.route('/games', methods=['GET'])
+    @app.route('/api/games', methods=['GET'])
     def get_games():
-        games = Game.query.all()
-        result = []
-        for game in games:
-            result.append({
-                'id': game.id,
-                'game_type_id': game.game_type_id,
-                'name': game.name,
-                'entry_fee': game.entry_fee,
-                'max_players': game.max_players,
-                'end_time': game.end_time.isoformat(),
-                'status': game.status
-            })
-        return jsonify(result), 200
+        try:
+            game_type_name = request.args.get('game_type')
+
+            if game_type_name:
+                game_type = GameType.query.filter_by(name=game_type_name).first()
+                if game_type:
+                    games = Game.query.filter_by(game_type_id=game_type.id).all()
+                else:
+                    games = []
+            else:
+                games = Game.query.all()
+
+            game_data = []
+            for game in games:
+                game_type = GameType.query.get(game.game_type_id)
+
+                # Fetch game configurations
+                game_configs = GameConfig.query.filter_by(game_id=game.id).all()
+                config_data = {}
+                for config in game_configs:
+                    config_data[config.config_key] = config.config_value
+
+                game_info = {
+                    "id": game.id,
+                    "name": game.name,
+                    "game_type": game_type.name if game_type else None,
+                    "pool_amount": game.pool_amount,
+                    "entry_fee": game.entry_fee,
+                    "end_time": game.end_time.isoformat() if game.end_time else None,
+                    "status": game.status,
+                    "winner_id": game.winner_id,
+                    "dateCreated": game.dateCreated.isoformat() if game.dateCreated else None,
+                    "dateModified": game.dateModified.isoformat() if game.dateModified else None,
+                    "max_players": game.max_players,
+                    "game_config": config_data
+                }
+                game_data.append(game_info)
+
+            return jsonify({"games": game_data}), 200
+
+        except Exception as err:
+            logging.error(err)
+            return jsonify({'error': 'Failed to fetch games'}), 500
 
     @app.route('/games/<int:game_id>', methods=['GET'])
     def get_game_details(game_id):
@@ -1094,6 +1129,7 @@ def create_app(config_path):
         for game_config in game_configs:
             result.append({
                 'id': game_config.id,
+                'game_id': game_config.game_id,
                 'game_type_id': game_config.game_type_id,
                 'config_key': game_config.config_key,
                 'config_value': game_config.config_value
