@@ -1,6 +1,6 @@
 // PiDashboard.jsx
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import Lotto from "./Lotto";
+import PiLottoDashboard from "./PiLottoDashboard";
 import PiAuthentication from "./PiAuthentication";
 import SideMenu from "./SideMenu";
 import PiDeposit from "./PiDeposit";
@@ -60,7 +60,7 @@ function PiLotto() {
   const fetchUserBalance = useCallback(async () => {
     try {
       const response = await axios.get(
-        "https://api.unipigames.com/api/user-balance",
+        "http://localhost:5000/api/user-balance",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem(
@@ -129,7 +129,7 @@ function PiLotto() {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-    }, 2000);
+    }, 200);
   };
 
   useEffect(() => {
@@ -219,7 +219,7 @@ function PiLotto() {
     }
 
     if (selectedGame === "pilotto") {
-      return <Lotto />;
+      return <PiLottoDashboard />;
     }
 
     if (isDepositVisible) {
