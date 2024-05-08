@@ -16,15 +16,18 @@ function PiLotto() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [userBalance, setUserBalance] = useState(parseFloat(0.0));
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedGame, setSelectedGame] = useState(null);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isDepositVisible, setIsDepositVisible] = useState(false);
   const [isWithdrawVisible, setIsWithdrawVisible] = useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [isPurchaseModalVisible, setIsPurchaseModalVisible] = useState(false);
+  const [gameTypes, setGameTypes] = useState([]);
+
+
   const userIconRef = useRef(null);
 
   useEffect(() => {
@@ -57,7 +60,7 @@ function PiLotto() {
   const fetchUserBalance = useCallback(async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/user-balance",
+        "https://api.unipigames.com/api/user-balance",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem(
@@ -81,11 +84,23 @@ function PiLotto() {
     }
   }, [updateUserBalance]);
 
+  const fetchGameTypes = useCallback(async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/game-types");
+      setGameTypes(response.data);
+    } catch (error) {
+      console.error("Error fetching game types:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && user) {
       fetchUserBalance();
+      fetchGameTypes();
     }
-  }, [isAuthenticated, user, fetchUserBalance]);
+  }, [isAuthenticated, user, fetchUserBalance, fetchGameTypes]);
+
+
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -203,7 +218,7 @@ function PiLotto() {
       return <div className="loading">Loading...</div>;
     }
 
-    if (selectedGame === "lotto") {
+    if (selectedGame === "pilotto") {
       return <Lotto />;
     }
 
@@ -263,11 +278,12 @@ function PiLotto() {
           onGameClick={handleGameClick}
           onClose={toggleSideMenu}
           onCloseComponents={handleCloseComponents}
+          gameTypes={gameTypes}
         />
       )}
 
       {isLogoutModalVisible && (
-        <div className="logout-modal"> 
+        <div className="logout-modal">
           <div className="logout-modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Confirm Logout</h3>
             <p>Are you sure you want to logout?</p>

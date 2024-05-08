@@ -5,7 +5,6 @@ import PiLotto from './js/PiDashboard';
 function App() {
   return (
     <div className="App">
-      <h1>Welcome to Pi-Lotto</h1>
       <PiLotto />
     </div>
   );
