@@ -12,7 +12,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from src.pi_python import PiNetwork
-from src.db.models import db, Game, UserGame, User, Wallet, Transaction, TransactionLog, AccountTransaction, Payment, LottoStats, UserScopes, TransactionData
+from src.db.models import db, Game, UserGame, User, Wallet, Transaction, TransactionLog, AccountTransaction, Payment, LottoStats, UserScopes, TransactionData, GameType, GameConfig
 
 
 def create_app(config_path):
@@ -511,8 +511,8 @@ def create_app(config_path):
 
     @app.route("/complete_payment/<payment_id>", methods=["POST"], endpoint="complete_payment")
     def complete_payment(payment_id):
+        verify_jwt_in_request()
         try:
-            verify_jwt_in_request()
             user_id = get_jwt_identity()
 
             # Check if user exists
@@ -618,7 +618,6 @@ def create_app(config_path):
             return jsonify({'error': 'User not authorized'}), 401
 
 
-
     @app.route('/incomplete/<payment_id>', methods=['POST'], endpoint="incomplete")
     def handle_incomplete_payment(payment_id):
         # Get post data
@@ -700,10 +699,15 @@ def create_app(config_path):
                 json.dump(response.json(), f)
 
             if response.status_code != 200:
+                if app.config['DEBUG'] == True:
+                    logging.error(colorama.Fore.RED + f"ERROR: Failed to complete payment for user: {user_id}. Payment ID: {deposit_id}")
+                    logging.error(colorama.Fore.RED + f"ERROR: Response: {response.content}")
                 return jsonify({'error': 'Failed to complete payment'}), 500
 
             # Complete the transaction
             if not complete_transaction(payment.id, txid):
+                if app.config['DEBUG'] == True:
+                    logging.error(colorama.Fore.RED + f"ERROR: Failed to complete transaction for user: {user_id}. Payment ID: {deposit_id}")
                 return jsonify({'error': 'Failed to complete transaction'}), 500
 
         logging.info(colorama.Fore.LIGHTRED_EX + f"INCOMPLETE: Incomplete payment completed for user: {user_id}. Payment ID: {deposit_id}. Amount: {amount}")
@@ -852,7 +856,6 @@ def create_app(config_path):
         return jsonify(response.json())
 
 
-
     @app.route("/cancel_payment/<payment_id>", methods=["POST"], endpoint="cancel_payment")
     @jwt_required()
     def cancel_payment(payment_id):
@@ -902,6 +905,30 @@ def create_app(config_path):
             logging.error(colorama.Fore.RED + f"ERROR: Failed to fetch ticket details for user: {user.username}. {str(err)}")
             return jsonify({'error': 'Failed to fetch ticket details'}), 500
 
+    @app.route('/admin/create-game-type', methods=['POST'])
+    @jwt_required()
+    def create_game_type():
+        uid = get_jwt_identity()
+        if uid != 'cfed0fd5-0b20-46bf-b54d-3e6d8746ad4c':
+            return jsonify({'error': 'Unauthorized'}), 401
+
+        data = request.json
+        name = data.get('name')
+        description = data.get('description')
+
+        if not name:
+            return jsonify({'error': 'Game type name is required'}), 400
+
+        existing_game_type = GameType.query.filter_by(name=name).first()
+        if existing_game_type:
+            return jsonify({'error': 'Game type with the same name already exists'}), 409
+
+        game_type = GameType(name=name, description=description)
+        db.session.add(game_type)
+        db.session.commit()
+
+        return jsonify({'message': 'Game type created successfully'}), 201
+
     @app.route('/admin/create-game', methods=['POST'])
     @jwt_required()
     def create_game():
@@ -910,117 +937,205 @@ def create_app(config_path):
             return jsonify({'error': 'Unauthorized'}), 401
 
         data = request.json
-        # if end_time is not provided, return an error in json format
-        end_time, status_code = validate_end_time(data)
+        game_type_id = data.get('game_type_id')
+        name = data.get('name')
+        entry_fee = data.get('entry_fee')
+        max_players = data.get('max_players')
+        end_time = data.get('end_time')
 
-        if status_code != 200:
-            return jsonify(end_time), status_code
+        if not all([game_type_id, name, entry_fee, max_players, end_time]):
+            return jsonify({'error': 'Missing required fields'}), 400
 
-        # Convert the end_time string to a datetime object
+        game_type = GameType.query.get(game_type_id)
+        if not game_type:
+            return jsonify({'error': 'Invalid game type'}), 400
+
         end_time = datetime.fromisoformat(end_time)
 
-        # Generate a unique game_id
-        game_id = generate_game_id()
-        # Get current wallet balance
-        balance = pi_network.get_balance()
-        # Set pool amount to 2% of the wallet balance
-        pool_amount = balance * 0.02
-        # set the number of players to 1
-        num_players = 1
+        game = Game(
+            game_type_id=game_type_id,
+            name=name,
+            entry_fee=entry_fee,
+            max_players=max_players,
+            end_time=end_time
+        )
+        db.session.add(game)
+        db.session.commit()
 
-        try:
-            new_game = Game(game_id=game_id, pool_amount=pool_amount, num_players=num_players, end_time=end_time)
-            db.session.add(new_game)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': 'Failed to create game'}), 500
+        return jsonify({'message': 'Game created successfully'}), 201
 
-        isTest = ''
-
-        # if env is development, , set the pool amount to 2π
-        if app.config['DEBUG'] != True:
-            isTest = " Test"
-
-        return jsonify({'message': 'Game created successfully with ' + str(pool_amount) + isTest + 'π'}), 201
-
-    @app.route('/admin/update-game/<game_id>', methods=['PUT'])
+    @app.route('/admin/update-game/<int:game_id>', methods=['PUT'])
     @jwt_required()
     def update_game(game_id):
-        username = get_jwt_identity()
-        if username != 'pboachie':
+        uid = get_jwt_identity()
+        if uid != 'cfed0fd5-0b20-46bf-b54d-3e6d8746ad4c':
             return jsonify({'error': 'Unauthorized'}), 401
 
-        game = Game.query.filter_by(game_id=game_id).first()
-        if game is None:
+        game = Game.query.get(game_id)
+        if not game:
             return jsonify({'error': 'Game not found'}), 404
 
         data = request.json
-        game.pool_amount = data.get('pool_amount', game.pool_amount)
-        game.num_players = data.get('num_players', game.num_players)
+        game.name = data.get('name', game.name)
+        game.entry_fee = data.get('entry_fee', game.entry_fee)
+        game.max_players = data.get('max_players', game.max_players)
         game.end_time = datetime.fromisoformat(data.get('end_time', game.end_time.isoformat()))
         game.status = data.get('status', game.status)
         db.session.commit()
 
         return jsonify({'message': 'Game updated successfully'}), 200
 
-    @app.route('/join-game/<game_id>', methods=['POST'])
+    @app.route('/admin/create-game-config', methods=['POST'])
     @jwt_required()
-    def join_game(game_id):
-        user_id = get_jwt_identity()
-        game = Game.query.filter_by(game_id=game_id).first()
-        if game is None:
-            return jsonify({'error': 'Game not found'}), 404
+    def create_game_config():
+        uid = get_jwt_identity()
+        if uid != 'cfed0fd5-0b20-46bf-b54d-3e6d8746ad4c':
+            return jsonify({'error': 'Unauthorized'}), 401
 
-        user_game = UserGame.query.filter_by(user_id=user_id, game_id=game.id).first()
-        if user_game is not None:
-            return jsonify({'error': 'User has already joined this game'}), 400
+        data = request.json
+        game_type_id = data.get('game_type_id')
+        game_id = data.get('game_id')
+        configs = data.get('configs')
 
-        new_user_game = UserGame(user_id=user_id, game_id=game.id)
-        db.session.add(new_user_game)
+        if not game_type_id or not configs:
+            return jsonify({'error': 'Missing required fields'}), 400
 
-        game.num_players += 1
+        if not game_id and not Game.query.get(game_id):
+            return jsonify({'error': 'Invalid game'}), 400
+
+        game_type = GameType.query.get(game_type_id)
+        if not game_type:
+            return jsonify({'error': 'Invalid game type'}), 400
+
+        for config in configs:
+            config_key = config.get('config_key')
+            config_value = config.get('config_value')
+
+            if not config_key or not config_value:
+                return jsonify({'error': 'Missing required fields in configuration'}), 400
+
+            game_config = GameConfig(
+                game_id=game_id,
+                game_type_id=game_type_id,
+                config_key=config_key,
+                config_value=config_value
+            )
+            db.session.add(game_config)
+
         db.session.commit()
 
-        return jsonify({'message': 'User joined game successfully'}), 200
+        return jsonify({'message': 'Game configurations created successfully'}), 201
 
-    @app.route('/game-details/<game_id>', methods=['GET'])
+    @app.route('/admin/update-game-config/<int:config_id>', methods=['PUT'])
     @jwt_required()
+    def update_game_config(config_id):
+        uid = get_jwt_identity()
+        if uid != 'cfed0fd5-0b20-46bf-b54d-3e6d8746ad4c':
+            return jsonify({'error': 'Unauthorized'}), 401
+
+        game_config = GameConfig.query.get(config_id)
+        if not game_config:
+            return jsonify({'error': 'Game configuration not found'}), 404
+
+        data = request.json
+        game_config.config_value = data.get('config_value', game_config.config_value)
+        db.session.commit()
+
+        return jsonify({'message': 'Game configuration updated successfully'}), 200
+
+    @app.route('/game-types', methods=['GET'])
+    def get_game_types():
+        game_types = GameType.query.all()
+        result = []
+        for game_type in game_types:
+            result.append({
+                'id': game_type.id,
+                'name': game_type.name,
+                'description': game_type.description
+            })
+        return jsonify(result), 200
+
+    @app.route('/api/games', methods=['GET'])
+    def get_games():
+        try:
+            game_type_name = request.args.get('game_type')
+
+            if game_type_name:
+                game_type = GameType.query.filter_by(name=game_type_name).first()
+                if game_type:
+                    games = Game.query.filter_by(game_type_id=game_type.id).all()
+                else:
+                    games = []
+            else:
+                games = Game.query.all()
+
+            game_data = []
+            for game in games:
+                game_type = GameType.query.get(game.game_type_id)
+
+                # Fetch game configurations
+                game_configs = GameConfig.query.filter_by(game_id=game.id).all()
+                config_data = {}
+                for config in game_configs:
+                    config_data[config.config_key] = config.config_value
+
+                game_info = {
+                    "id": game.id,
+                    "name": game.name,
+                    "game_type": game_type.name if game_type else None,
+                    "pool_amount": game.pool_amount,
+                    "entry_fee": game.entry_fee,
+                    "end_time": game.end_time.isoformat() if game.end_time else None,
+                    "status": game.status,
+                    "winner_id": game.winner_id,
+                    "dateCreated": game.dateCreated.isoformat() if game.dateCreated else None,
+                    "dateModified": game.dateModified.isoformat() if game.dateModified else None,
+                    "max_players": game.max_players,
+                    "game_config": config_data
+                }
+                game_data.append(game_info)
+
+            return jsonify({"games": game_data}), 200
+
+        except Exception as err:
+            logging.error(err)
+            return jsonify({'error': 'Failed to fetch games'}), 500
+
+    @app.route('/games/<int:game_id>', methods=['GET'])
     def get_game_details(game_id):
-        game = Game.query.filter_by(game_id=game_id).first()
-        if game is None:
+        game = Game.query.get(game_id)
+        if not game:
             return jsonify({'error': 'Game not found'}), 404
 
-        game_details = {
-            'game_id': game.game_id,
-            'pool_amount': game.pool_amount,
-            'num_players': game.num_players,
+        result = {
+            'id': game.id,
+            'game_type_id': game.game_type_id,
+            'name': game.name,
+            'entry_fee': game.entry_fee,
+            'max_players': game.max_players,
             'end_time': game.end_time.isoformat(),
             'status': game.status
         }
-        return jsonify(game_details), 200
+        return jsonify(result), 200
 
-    @app.route('/user-games', methods=['GET'])
-    @jwt_required()
-    def get_user_games():
-        user_id = get_jwt_identity()
-        user_games = UserGame.query.filter_by(user_id=user_id).all()
+    @app.route('/game-configs', methods=['GET'])
+    def get_game_configs():
+        game_type_id = request.args.get('game_type_id')
+        if not game_type_id:
+            return jsonify({'error': 'game_type_id is required'}), 400
 
-        game_ids = [user_game.game_id for user_game in user_games]
-        games = Game.query.filter(Game.id.in_(game_ids)).all()
+        game_configs = GameConfig.query.filter_by(game_type_id=game_type_id).all()
+        result = []
+        for game_config in game_configs:
+            result.append({
+                'id': game_config.id,
+                'game_id': game_config.game_id,
+                'game_type_id': game_config.game_type_id,
+                'config_key': game_config.config_key,
+                'config_value': game_config.config_value
+            })
+        return jsonify(result), 200
 
-        game_details = []
-        for game in games:
-            game_detail = {
-                'game_id': game.game_id,
-                'pool_amount': game.pool_amount,
-                'num_players': game.num_players,
-                'end_time': game.end_time.isoformat(),
-                'status': game.status
-            }
-            game_details.append(game_detail)
-
-        return jsonify(game_details), 200
 
     @app.after_request
     def after_request(response):

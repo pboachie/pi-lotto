@@ -1,6 +1,17 @@
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from src.db.models import Game, UserGame, User, Wallet, Transaction, TransactionLog, AccountTransaction, Payment, LottoStats, UserScopes, TransactionData, GameType, GameConfig
 
-db = SQLAlchemy()
+# Instructions:
+# Run export FLASK_APP=migratedb.py
+# Run set FLASK_APP=migratedb.py
+# Copy all classes from models.py and paste them here then fun flask db migrate -m "YOUR MESSAGE HERE" , then flask db upgrade
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pilotto.db'  # Replace with your database URI
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -110,3 +121,21 @@ class GameConfig(db.Model):
     config_value = db.Column(db.String(255), nullable=False)
     dateCreated = db.Column(db.DateTime, default=db.func.current_timestamp())
     dateModified = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+if __name__ == '__main__':
+    with app.app_context():
+        # Initialize the migration repository if it doesn't exist
+        if not migrate.directory():
+            db.create_all()
+            migrate.init()
+
+        # Generate the migration script
+        from flask_migrate import upgrade, migrate
+
+        # Generate the migration script
+        migrate(message='Updated database schema')
+
+        # Apply the migration
+        upgrade()
+
+    print("Database schema updated successfully!")
