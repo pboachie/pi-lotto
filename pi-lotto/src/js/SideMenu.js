@@ -3,7 +3,7 @@ import React from 'react';
 import '../css/SideMenu.css';
 import { FaTimes, FaHome } from 'react-icons/fa';
 
-function SideMenu({ isOpen, onGameClick, onClose, onCloseComponents }) {
+function SideMenu({ isOpen, onGameClick, onClose, onCloseComponents, gameTypes}) {
   const handleGameClick = (game) => {
     onGameClick(game);
     onClose();
@@ -30,10 +30,14 @@ function SideMenu({ isOpen, onGameClick, onClose, onCloseComponents }) {
               <FaHome /> Home
             </button>
           </li>
-          <li>
-            <button onClick={() => handleGameClick('lotto')}>Pi Lotto</button>
-          </li>
-          {/* Add more games here */}
+          {gameTypes.map((gameType) => (
+            <li key={gameType.id}>
+              {/* Remove special characters and convert to lowercase */}
+              <button onClick={() => handleGameClick(gameType.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase())} className="game-btn">
+                {gameType.name}
+              </button>
+            </li>
+          ))}
         </ul>
       </div>
       {isOpen && <div className="side-menu-backdrop" onClick={onClose}></div>}
