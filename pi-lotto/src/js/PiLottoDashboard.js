@@ -46,13 +46,6 @@ function PiLottoDashboard() {
   //     }
   //   };
 
-  const formatCurrency = (amount) => {
-    return amount.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-  };
-
   return (
     <div className="pi-lotto-dashboard">
       <h2>Pi-Lotto Games</h2>
@@ -74,8 +67,8 @@ function PiLottoDashboard() {
               <div className="game-info">
                 <h3>{game.name}</h3>
                 <div className="game-details">
-                  <p>Entry Fee: {formatCurrency(game.entry_fee)}</p>
-                  <p>Current Pool: {formatCurrency(game.pool_amount)}</p>
+                  <p>Entry Fee: {game.entry_fee} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
+                  <p>Current Pool: {game.pool_amount} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
                 </div>
                 <div className="draw-schedule">
                   <p>
