@@ -15,5 +15,5 @@ python3 -m pip install -r requirements.txt
 cp config/config.yml.example config.yml
 
 # Start the development server
-python3 pi-lotto-backend.py config.yml
+python3 main.py
 ```

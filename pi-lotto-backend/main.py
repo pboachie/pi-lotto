@@ -1,4 +1,4 @@
-# pi-lotto-backend.py
+# main.py
 
 import yaml
 import logging
@@ -22,7 +22,7 @@ app = FastAPI()
 
 
 # Load configuration from config.yml
-with open("config.yml", 'r') as config_file:
+with open("config/config.yml", 'r') as config_file:
     config = yaml.safe_load(config_file)
 
 
@@ -1208,6 +1208,4 @@ async def get_game_configs(request: Request, db: Session = Depends(get_db)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=config['app']['host'], port=config['app']['port'])
-
-
 

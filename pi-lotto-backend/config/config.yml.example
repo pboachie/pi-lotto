@@ -1,0 +1,26 @@
+app:
+  debug: true
+  host: 'localhost'
+  port: 5000
+  version: '0.0.1'
+
+database:
+  uri: 'sqlite:///pilotto.db'
+  track_modifications: false
+
+api:
+  server_api_key: 'CHANGE_ME'
+  base_url: 'https://api.minepi.com'
+  app_wallet_seed: 'CHANGE_ME'
+  app_wallet_address: 'CHANGE_ME'
+  # Pi Network" | "Pi Testnet
+  network: Pi Testnet
+
+jwt:
+  secret_key: 'CHANGE_ME'
+  token_location: 'headers'
+
+logging:
+  level: 'DEBUG'
+  format: '%(asctime)s - %(levelname)s - %(message)s'
+  filePath: 'logs/server.log'
