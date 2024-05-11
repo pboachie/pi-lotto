@@ -145,15 +145,15 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
           </div>
         </div>
       )}
-      {isLoading ? (
+      {isLoading && (
         <div className="loading-modal">
           <div className="spinner"></div>
+          <p>Processing withdrawal. Please wait.</p>
         </div>
-      ) : (
-        <button className="close-button" onClick={onClose} disabled={isLoading}>
-          Close
-        </button>
       )}
+      <button className="close-button" onClick={onClose} disabled={isLoading}>
+        Close
+      </button>
     </div>
   );
 };
