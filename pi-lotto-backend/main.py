@@ -13,8 +13,9 @@ from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from src.db.database import get_db
 from src.utils.utils import load_config, configure_logging, uuid
-from src.utils.transactions import create_transaction, complete_transaction, update_user_data, create_access_token, get_current_user
-from src.auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OAUTH2_SCHEME
+from src.utils.transactions import create_transaction, complete_transaction, update_user_data, create_access_token, get_current_user, Annotated
+
+from src.auth import DEV_DOCS_PASSWORD, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from src.db.models import Game, User, Transaction, LottoStats, UserScopes, TransactionData, GameType, GameConfig, Session
 from src.pi_network.pi_python import PiNetwork
@@ -107,6 +108,27 @@ async def signin(request: Request, db: Session = Depends(get_db)):
     except requests.exceptions.RequestException as err:
         logging.error(err)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not authorized')
+    
+# if debug mode is enabled, enable this endpoint
+if config['app']['debug'] == True:
+    @app.post("/token")
+    async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_db)):
+        try:
+            user = db.query(User).filter(User.username == form_data.username).first()
+
+            if not user:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+            if form_data.password != str(DEV_DOCS_PASSWORD):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+            access_token_expires = timedelta(minutes=60)
+            access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+
+            return {"access_token": access_token, "token_type": "bearer"}
+        except HTTPException as e:
+            logging.error(f"Error logging in: {str(e)}")
+            raise e
 
 @app.post("/refresh-token")
 async def refresh_token(request: Request, db: Session = Depends(get_db)):
