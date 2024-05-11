@@ -1,5 +1,5 @@
 // Lotto.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PurchaseModal from "./PurchaseModal";
 import "../css/Lotto.css";
 import { makeApiRequest } from '../utils/api';
@@ -14,6 +14,8 @@ function Lotto({ game, onBackToDashboard }) {
     ticketPrice: null,    baseFee: null,
     serviceFee: null,
   });
+
+  const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     if (game) {
@@ -59,6 +61,7 @@ function Lotto({ game, onBackToDashboard }) {
       }
     }
   };
+  
 
   const handlePiLottoClick = (number) => {
     if (!isNumberDisabled(number)) {
@@ -98,13 +101,13 @@ function Lotto({ game, onBackToDashboard }) {
 
       // Handle ticket purchase logic here
       console.log("Selected numbers:", numbers);
-      console.log("PiLotto number:", PiLotto);
+      console.log("SuperPi number:", PiLotto);
       console.log("Ticket number:", ticketNumber);
 
       setShowModal(true);
     } else {
       alert(
-        "Please select all 5 numbers and the PiLotto number to purchase a ticket."
+        "Please select all 5 numbers and the SuperPi number to purchase a ticket."
       );
     }
   };
@@ -112,6 +115,50 @@ function Lotto({ game, onBackToDashboard }) {
   const handleCloseModal = () => {
     setShowModal(false);
   };
+
+  const calculatePrizeAmount = (matchedNumbers) => {
+    const prizeDistribution = JSON.parse(game.game_config.prize_distribution);
+    const prizePercentage = prizeDistribution[`${matchedNumbers}_with_power`] || prizeDistribution[`${matchedNumbers}`] || 0;
+    const prizeAmount = prizePercentage * game.pool_amount;
+    return prizeAmount.toFixed(2);
+  };
+
+  const renderPrizeDistribution = () => {
+    const prizeDistribution = JSON.parse(game.game_config.prize_distribution);
+    const drawSchedule = JSON.parse(game.game_config.draw_schedule);
+
+    const prizeDistributionMessage = Object.entries(prizeDistribution)
+      .map(([key, value]) => {
+        const matchedNumbers = key.includes('_with_power') ? key.replace('_with_power', '').split('+').length : parseInt(key);
+        const prizeAmount = calculatePrizeAmount(matchedNumbers);
+        return `Match ${matchedNumbers} number${matchedNumbers > 1 ? 's' : ''}: ${(value * 100).toFixed(2)}% (${prizeAmount} ${process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'})`;
+      })
+      .join(', ');
+
+    const drawScheduleMessage = `Draw Schedule: Frequency: ${drawSchedule.frequency}, Day: ${drawSchedule.day}, Time: ${drawSchedule.time}`;
+
+    return (
+      <div className="game-details-scrollable" ref={scrollContainerRef}>
+        <div className="game-details-scroll-content">
+          <p>{prizeDistributionMessage}, {drawScheduleMessage}</p>
+        </div>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      const scrollInterval = setInterval(() => {
+        scrollContainer.scrollLeft += 1;
+        if (scrollContainer.scrollLeft + scrollContainer.offsetWidth >= scrollContainer.scrollWidth) {
+          scrollContainer.scrollLeft = 0;
+        }
+      }, 50);
+
+      return () => clearInterval(scrollInterval);
+    }
+  }, []);
 
   const numberSets = [];
 
@@ -129,8 +176,6 @@ function Lotto({ game, onBackToDashboard }) {
   const numberRange = JSON.parse(game.game_config.number_range);
   const mainNumberRange = numberRange.main;
   const powerNumberRange = numberRange.power;
-  const prizeDistribution = JSON.parse(game.game_config.prize_distribution);
-  const drawSchedule = JSON.parse(game.game_config.draw_schedule);
 
   return (
     <div className="lotto">
@@ -168,33 +213,10 @@ function Lotto({ game, onBackToDashboard }) {
             Purchase Ticket
           </button>
         </div>
-        <div className="game-details">
-          <div className="prize-distribution">
-            <h3>Prize Distribution</h3>
-            <ul>
-              {Object.entries(prizeDistribution).map(([key, value]) => (
-                <li key={key}>
-                  {key.replace(/_/g, ' + ')}: {(value * 100).toFixed(2)}%
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="fees">
-            <h3>Fees</h3>
-            <p>Entry Fee: {game.entry_fee} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
-            <p>Service Fee: {ticketDetails.serviceFee} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
-            <p>Base Fee: {ticketDetails.baseFee} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
-          </div>
-          <div className="draw-schedule">
-            <h3>Draw Schedule</h3>
-            <p>Frequency: {drawSchedule.frequency}</p>
-            <p>Day: {drawSchedule.day}</p>
-            <p>Time: {drawSchedule.time}</p>
-          </div>
-        </div>
+        {renderPrizeDistribution()}
         <div className="number-selector-container">
           <div className="PiLotto-grid">
-            <h3>PiLotto</h3>
+            <h3>SuperPi Numbers:</h3>
             {Array.from({ length: powerNumberRange[1] - powerNumberRange[0] + 1 }, (_, i) => (
               <button
                 key={i}
