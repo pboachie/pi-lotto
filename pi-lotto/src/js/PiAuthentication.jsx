@@ -25,10 +25,12 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
 
   const signInUser = async (authResult) => {
     try {
-      // Remove the access token if it exists
-      if (localStorage.getItem('@pi-lotto:access_token')) {
-        localStorage.removeItem('@pi-lotto:access_token');
-      }
+      // Remove all access tokens from the local storage starting with '@pi-lotto:'
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('@pi-lotto:')) {
+          localStorage.removeItem(key);
+        }
+      });
 
       // Fetch the access token from the server
       const response = await axios.post('http://localhost:5000/signin', { authResult });

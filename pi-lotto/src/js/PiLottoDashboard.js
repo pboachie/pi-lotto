@@ -21,7 +21,7 @@ function PiLottoDashboard() {
 
       // Save the first game to local storage
       if (response.data.games.length > 0) {
-        localStorage.setItem("selectedGame", JSON.stringify(response.data.games[0]));
+        localStorage.setItem("@pi-lotto:selectedGame", JSON.stringify(response.data.games[0]));
       }
     } catch (error) {
       console.error("Error fetching games:", error);
@@ -30,7 +30,7 @@ function PiLottoDashboard() {
 
   const handleGameClick = (game) => {
     console.log("Loading game with ID:", game.id);
-    localStorage.setItem("selectedGame", JSON.stringify(game));
+    localStorage.setItem("@pi-lotto:selectedGame", JSON.stringify(game));
     setSelectedGame(game);
   };
 

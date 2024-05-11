@@ -2,11 +2,14 @@ app:
   debug: true
   host: 'localhost'
   port: 5000
-  version: '0.0.1'
+  version: '0.2.3'
 
 database:
   uri: 'sqlite:///pilotto.db'
   track_modifications: false
+
+dev_docs:
+  password: 'CHANGE_ME!'
 
 api:
   server_api_key: 'CHANGE_ME'
@@ -18,7 +21,8 @@ api:
 
 jwt:
   secret_key: 'CHANGE_ME'
-  token_location: 'headers'
+  algorithm: 'HS256'
+  access_token_expire_minutes: 25
 
 logging:
   level: 'DEBUG'

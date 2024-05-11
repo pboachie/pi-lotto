@@ -1,9 +1,41 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, sessionmaker, Session
 from sqlalchemy.sql import func
+from pydantic import BaseModel
 
 Base = declarative_base()
+
+# ==== Sign in request and response models =====
+class Session(Session):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+class bm_valid_until(BaseModel):
+    timestamp: int
+    iso8601: str
+
+class bm_credentials(BaseModel):
+    scopes: list
+    valid_until: bm_valid_until
+
+class bm_user(BaseModel):
+    uid: str
+    credentials: bm_credentials
+    username: str
+
+class bm_authResult(BaseModel):
+    user: bm_user
+    accessToken: str
+
+
+class SignInRequest(BaseModel):
+    authResult: bm_authResult
+
+class SignInResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+# ================================================
 
 class Game(Base):
     __tablename__ = 'game'
@@ -21,7 +53,6 @@ class Game(Base):
     max_players = Column(Integer, nullable=False, default=0)
     user_games = relationship('UserGame', backref='game', lazy='dynamic')
 
-
 class UserGame(Base):
     __tablename__ = 'user_game'
 
@@ -29,7 +60,6 @@ class UserGame(Base):
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     game_id = Column(Integer, ForeignKey('game.id'), nullable=False)
     dateJoined = Column(DateTime, default=func.current_timestamp())
-
 
 class User(Base):
     __tablename__ = 'user'
@@ -139,4 +169,3 @@ class GameConfig(Base):
     config_value = Column(String(255), nullable=False)
     dateCreated = Column(DateTime, default=func.current_timestamp())
     dateModified = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
-
