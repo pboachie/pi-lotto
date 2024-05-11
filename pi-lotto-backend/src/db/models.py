@@ -21,7 +21,6 @@ class Game(Base):
     max_players = Column(Integer, nullable=False, default=0)
     user_games = relationship('UserGame', backref='game', lazy='dynamic')
 
-
 class UserGame(Base):
     __tablename__ = 'user_game'
 
@@ -29,7 +28,6 @@ class UserGame(Base):
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     game_id = Column(Integer, ForeignKey('game.id'), nullable=False)
     dateJoined = Column(DateTime, default=func.current_timestamp())
-
 
 class User(Base):
     __tablename__ = 'user'
@@ -139,4 +137,3 @@ class GameConfig(Base):
     config_value = Column(String(255), nullable=False)
     dateCreated = Column(DateTime, default=func.current_timestamp())
     dateModified = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
-
