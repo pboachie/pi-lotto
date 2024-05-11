@@ -165,8 +165,12 @@ function PiLotto() {
   };
 
   const handleConfirmLogout = () => {
-    // Clear the access token from the local storage
-    localStorage.removeItem("@pi-lotto:access_token");
+    // Delete anything starting with "@pi-lotto" from local storage
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith("@pi-lotto")) {
+        localStorage.removeItem(key);
+      }
+    });
 
     // Reset the user state
     setIsAuthenticated(false);
