@@ -12,18 +12,17 @@ from jose import JWTError, jwt
 from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from src.db.database import get_db
+from src.utils.utils import load_config
 from fastapi.middleware.cors import CORSMiddleware
-from src.db.models import Base, Game, UserGame, User, Wallet, Transaction, TransactionLog, AccountTransaction, Payment, LottoStats, UserScopes, TransactionData, GameType, GameConfig
-from src.pi_python import PiNetwork
+from src.db.models import Game, UserGame, User, Wallet, Transaction, TransactionLog, AccountTransaction, Payment, LottoStats, UserScopes, TransactionData, GameType, GameConfig, Session
+from src.pi_network.pi_python import PiNetwork
 
 app = FastAPI()
 
 
 # Load configuration from config.yml
-with open("config/config.yml", 'r') as config_file:
-    config = yaml.safe_load(config_file)
+config = load_config()
 
 
 # Configure CORS
@@ -51,19 +50,6 @@ SECRET_KEY = config['jwt']['secret_key']
 ALGORITHM = config['jwt']['algorithm']
 ACCESS_TOKEN_EXPIRE_MINUTES = config['jwt']['access_token_expire_minutes']
 
-# Configure the database connection
-engine = create_engine(config['database']['uri'])
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base.metadata.create_all(bind=engine)
-
-# Dependency to get a database session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # OAuth2 scheme for authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
