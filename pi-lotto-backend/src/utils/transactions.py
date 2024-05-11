@@ -1,6 +1,6 @@
 # src/utils/transactions.py
-
 from typing import Optional
+from typing_extensions import Annotated
 from fastapi import Depends, HTTPException, status
 from jose import JWTError, jwt
 from src.db.database import get_db
