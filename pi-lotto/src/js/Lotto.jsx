@@ -8,7 +8,6 @@ import { FaArrowLeft } from 'react-icons/fa';
 function Lotto({ game, onBackToDashboard }) {
   const [numbers, setNumbers] = useState([]);
   const [PiLotto, setPiLotto] = useState(null);
-  const [ticketNumber, setTicketNumber] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [ticketDetails, setTicketDetails] = useState({
     ticketPrice: null,    baseFee: null,
@@ -20,6 +19,13 @@ function Lotto({ game, onBackToDashboard }) {
   useEffect(() => {
     if (game) {
       setNumbers(Array(5).fill(null));
+
+      // Add background-image to .lotto-ticket based on game.game_config.game_image
+      const lottoTicket = document.querySelector('.lotto-ticket');
+      lottoTicket.style.backgroundImage = `url(${game.game_config.game_image})`;
+      lottoTicket.style.backgroundSize = 'cover';
+      lottoTicket.style.backgroundRepeat = 'no-repeat';
+      lottoTicket.style.backgroundPosition = 'center';
     }
   }, [game]);
 
@@ -36,20 +42,6 @@ function Lotto({ game, onBackToDashboard }) {
     }
   };
 
-  useEffect(() => {
-    if (!ticketNumber && numbers.some((number) => number !== null)) {
-      generateTicketNumber();
-    }
-  }, [numbers, ticketNumber]);
-
-  const generateTicketNumber = () => {
-    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let ticketNum = "";
-    for (let i = 0; i < 8; i++) {
-      ticketNum += chars[Math.floor(Math.random() * chars.length)];
-    }
-    setTicketNumber(ticketNum);
-  };
 
   const handleNumberClick = (number) => {
     if (!isNumberDisabled(number)) {
@@ -61,7 +53,7 @@ function Lotto({ game, onBackToDashboard }) {
       }
     }
   };
-  
+
 
   const handlePiLottoClick = (number) => {
     if (!isNumberDisabled(number)) {
@@ -102,7 +94,6 @@ function Lotto({ game, onBackToDashboard }) {
       // Handle ticket purchase logic here
       console.log("Selected numbers:", numbers);
       console.log("SuperPi number:", PiLotto);
-      console.log("Ticket number:", ticketNumber);
 
       setShowModal(true);
     } else {
@@ -208,7 +199,6 @@ function Lotto({ game, onBackToDashboard }) {
               {PiLotto || "-"}
             </span>
           </div>
-          {ticketNumber && <p className="ticket-number-label">Ticket# {ticketNumber}</p>}
           <button className="purchase-button" onClick={handleSubmit}>
             Purchase Ticket
           </button>
@@ -249,7 +239,6 @@ function Lotto({ game, onBackToDashboard }) {
       {showModal && (
         <PurchaseModal
           numberSets={numberSets}
-          ticketNumber={ticketNumber}
           ticketPrice={ticketDetails.ticketPrice}
           baseFee={ticketDetails.baseFee}
           serviceFee={ticketDetails.serviceFee}
