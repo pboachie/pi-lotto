@@ -2,8 +2,40 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Foreig
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker, Session
 from sqlalchemy.sql import func
+from pydantic import BaseModel
 
 Base = declarative_base()
+
+# ==== Sign in request and response models =====
+class Session(Session):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+class bm_valid_until(BaseModel):
+    timestamp: int
+    iso8601: str
+
+class bm_credentials(BaseModel):
+    scopes: list
+    valid_until: bm_valid_until
+
+class bm_user(BaseModel):
+    uid: str
+    credentials: bm_credentials
+    username: str
+
+class bm_authResult(BaseModel):
+    user: bm_user
+    accessToken: str
+
+
+class SignInRequest(BaseModel):
+    authResult: bm_authResult
+
+class SignInResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+# ================================================
 
 class Game(Base):
     __tablename__ = 'game'
