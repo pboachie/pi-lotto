@@ -6,7 +6,8 @@ import requests
 import uuid
 import json
 import colorama
-from datetime import datetime, timedelta
+from typing import Optional
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -151,6 +152,16 @@ def validate_end_time(data):
 
     return end_time, 200
 
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
 def update_user_balance(user_id: int, transaction_amount: float, transaction_type: str, db: Session):
     try:
         user = db.query(User).get(user_id)
@@ -289,15 +300,16 @@ async def signin(request: Request, db: Session = Depends(get_db)):
         user = update_user_data(user_data, db)
 
         # Generate JWT token for the user
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        jwt_payload = {
-            "sub": user.username,
-            "exp": expire
-        }
-        jwt_token = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+
+        # Generate refresh token for the user
+        refresh_token_expires = timedelta(hours=5)
+        refresh_token = create_access_token(data={"sub": user.username}, expires_delta=refresh_token_expires)
+
 
         logging.info(colorama.Fore.GREEN + f"SIGNIN: User {user.username} signed in successfully")
-        return JSONResponse({'access_token': jwt_token})
+        return JSONResponse({'access_token': access_token, 'refresh_token': refresh_token})
 
     except json.JSONDecodeError:
         logging.error("Invalid JSON format in request body")
@@ -316,6 +328,43 @@ async def signin(request: Request, db: Session = Depends(get_db)):
     except requests.exceptions.RequestException as err:
         logging.error(err)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not authorized')
+
+@app.post("/refresh-token")
+async def refresh_token(request: Request, db: Session = Depends(get_db)):
+    try:
+        data = await request.json()
+        refresh_token = data.get('refresh_token')
+
+        if not refresh_token:
+            if config['app']['debug'] == True:
+                logging.error(colorama.Fore.RED + "Refresh token is missing")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Refresh token is missing")
+
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            if username is None:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+        user = db.query(User).filter(User.username == username).first()
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+        # Generate a new access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+
+
+        return {"access_token": access_token}
+
+    except HTTPException as e:
+        logging.error(f"Error refreshing token: {str(e)}")
+        raise e
+    except Exception as e:
+        logging.error(f"Error refreshing token: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to refresh token")
 
 @app.post("/create_deposit")
 async def create_deposit(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

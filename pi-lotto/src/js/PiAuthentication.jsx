@@ -1,7 +1,9 @@
 // PiAuthentication.js
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import '../css/PiAuthentication.css';
+import { makeApiRequest } from '../utils/api';
+import axios from 'axios';
+
 
 function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -38,8 +40,9 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
       }
 
       // Save the access token to the local storage
-      if (response.data.access_token) {
+      if (response.data.access_token && response.data.refresh_token) {
         localStorage.setItem('@pi-lotto:access_token', response.data.access_token);
+        localStorage.setItem('@pi-lotto:refresh_token', response.data.refresh_token);
         return true;
       }
       return false;
@@ -53,7 +56,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
     try {
       // Get paymentId
       const paymentId = payment.identifier;
-      const response = await axios.post('http://localhost:5000/incomplete/'+ paymentId, { payment });
+      const response = await makeApiRequest('post', 'http://localhost:5000/incomplete/'+ paymentId, { payment });
 
       if (response.status !== 200) {
         console.error('Incomplete payment error:', response.data.error);
@@ -64,11 +67,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
       console.log('Incomplete payment found:', response.data);
 
       // Fetch the updated user balance from the server
-      const balanceResponse = await axios.get('http://localhost:5000/api/user-balance', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
-        },
-      });
+      const balanceResponse = await makeApiRequest('get', 'http://localhost:5000/api/user-balance');
 
       if (balanceResponse.status === 200) {
         const updatedBalance = balanceResponse.data.balance;

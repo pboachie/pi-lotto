@@ -2,31 +2,32 @@
 import React, { useState, useEffect } from "react";
 import PurchaseModal from "./PurchaseModal";
 import "../css/Lotto.css";
-import axios from "axios";
+import { makeApiRequest } from '../utils/api';
+import { FaArrowLeft } from 'react-icons/fa';
 
-function Lotto() {
-  const [numbers, setNumbers] = useState(Array(5).fill(null));
+function Lotto({ game, onBackToDashboard }) {
+  const [numbers, setNumbers] = useState([]);
   const [PiLotto, setPiLotto] = useState(null);
   const [ticketNumber, setTicketNumber] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [ticketDetails, setTicketDetails] = useState({
-    ticketPrice: null,
-    baseFee: null,
+    ticketPrice: null,    baseFee: null,
     serviceFee: null,
   });
 
+  useEffect(() => {
+    if (game) {
+      setNumbers(Array(5).fill(null));
+    }
+  }, [game]);
+
   const fetchTicketDetails = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5000/api/ticket-details",
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem(
-              "@pi-lotto:access_token"
-            )}`,
-          },
-        }
-      );
+      const response = await makeApiRequest('get', "http://localhost:5000/api/ticket-details", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("@pi-lotto:access_token")}`,
+        },
+      });
       setTicketDetails(response.data);
     } catch (error) {
       console.error("Error fetching ticket details:", error);
@@ -66,7 +67,7 @@ function Lotto() {
   };
 
   const isNumberDisabled = (number) => {
-    return numbers.includes(number) || PiLotto === number;
+    return numbers.includes(number) || PiLotto === number || numbers.filter((num) => num !== null).length >= 6;
   };
 
   const isPiLottoDisabled = (number) => {
@@ -121,11 +122,30 @@ function Lotto() {
     });
   }
 
+  if (!game) {
+    return <div>Loading...</div>;
+  }
+
+  const numberRange = JSON.parse(game.game_config.number_range);
+  const mainNumberRange = numberRange.main;
+  const powerNumberRange = numberRange.power;
+  const prizeDistribution = JSON.parse(game.game_config.prize_distribution);
+  const drawSchedule = JSON.parse(game.game_config.draw_schedule);
+
   return (
     <div className="lotto">
+      <div className="top-bar">
+        <button className="back-button" onClick={onBackToDashboard}>
+          <FaArrowLeft /> Back
+        </button>
+        <div className="pool-size">
+          <h3>Current Pool Size</h3>
+          <p className="pool-amount">{game.pool_amount} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
+        </div>
+      </div>
       <div className="lotto-container">
         <div className="lotto-ticket">
-          <h3>Your Lotto Ticket</h3>
+          <h3>{game.name}</h3>
           <div className="ticket-numbers">
             {numbers.map((number, index) => (
               <span
@@ -143,40 +163,62 @@ function Lotto() {
               {PiLotto || "-"}
             </span>
           </div>
-          {ticketNumber && (
-            <p className="ticket-number-label">Ticket# {ticketNumber}</p>
-          )}
+          {ticketNumber && <p className="ticket-number-label">Ticket# {ticketNumber}</p>}
           <button className="purchase-button" onClick={handleSubmit}>
             Purchase Ticket
           </button>
         </div>
+        <div className="game-details">
+          <div className="prize-distribution">
+            <h3>Prize Distribution</h3>
+            <ul>
+              {Object.entries(prizeDistribution).map(([key, value]) => (
+                <li key={key}>
+                  {key.replace(/_/g, ' + ')}: {(value * 100).toFixed(2)}%
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="fees">
+            <h3>Fees</h3>
+            <p>Entry Fee: {game.entry_fee} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
+            <p>Service Fee: {ticketDetails.serviceFee} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
+            <p>Base Fee: {ticketDetails.baseFee} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
+          </div>
+          <div className="draw-schedule">
+            <h3>Draw Schedule</h3>
+            <p>Frequency: {drawSchedule.frequency}</p>
+            <p>Day: {drawSchedule.day}</p>
+            <p>Time: {drawSchedule.time}</p>
+          </div>
+        </div>
         <div className="number-selector-container">
           <div className="PiLotto-grid">
             <h3>PiLotto</h3>
-            {Array.from({ length: 25 }, (_, i) => (
+            {Array.from({ length: powerNumberRange[1] - powerNumberRange[0] + 1 }, (_, i) => (
               <button
                 key={i}
-                className={`PiLotto-button ${
-                  isPiLottoDisabled(i + 1) ? "disabled" : ""
-                } ${PiLotto === i + 1 ? "selected" : ""}`}
-                onClick={() => handlePiLottoClick(i + 1)}
-                disabled={isPiLottoDisabled(i + 1)}
+                className={`PiLotto-button ${isPiLottoDisabled(i + powerNumberRange[0]) ? "disabled" : ""} ${
+                  PiLotto === i + powerNumberRange[0] ? "selected" : ""
+                }`}
+                onClick={() => handlePiLottoClick(i + powerNumberRange[0])}
+                disabled={isPiLottoDisabled(i + powerNumberRange[0])}
               >
-                {i + 1}
+                {i + powerNumberRange[0]}
               </button>
             ))}
           </div>
           <div className="number-grid">
-            {Array.from({ length: 70 }, (_, i) => (
+            {Array.from({ length: mainNumberRange[1] - mainNumberRange[0] + 1 }, (_, i) => (
               <button
                 key={i}
-                className={`number-button ${
-                  isNumberDisabled(i + 1) ? "disabled" : ""
-                } ${numbers.includes(i + 1) ? "selected" : ""}`}
-                onClick={() => handleNumberClick(i + 1)}
-                disabled={isNumberDisabled(i + 1)}
+                className={`number-button ${isNumberDisabled(i + mainNumberRange[0]) ? "disabled" : ""} ${
+                  numbers.includes(i + mainNumberRange[0]) ? "selected" : ""
+                }`}
+                onClick={() => handleNumberClick(i + mainNumberRange[0])}
+                disabled={isNumberDisabled(i + mainNumberRange[0])}
               >
-                {i + 1}
+                {i + mainNumberRange[0]}
               </button>
             ))}
           </div>

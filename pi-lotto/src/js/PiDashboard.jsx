@@ -6,10 +6,8 @@ import SideMenu from "./SideMenu";
 import PiDeposit from "./PiDeposit";
 import PiWithdraw from "./PiWithdraw";
 import PurchaseModal from './PurchaseModal';
-
-
+import { makeApiRequest } from '../utils/api';
 import "../css/PiDashboard.css";
-import axios from "axios";
 import { FaBars, FaUser } from "react-icons/fa";
 
 function PiLotto() {
@@ -59,15 +57,8 @@ function PiLotto() {
 
   const fetchUserBalance = useCallback(async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5000/api/user-balance",
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem(
-              "@pi-lotto:access_token"
-            )}`,
-          },
-        }
+      const response = await makeApiRequest('get',
+        "http://localhost:5000/api/user-balance"
       );
 
       const status = response.status === 200;
@@ -86,7 +77,7 @@ function PiLotto() {
 
   const fetchGameTypes = useCallback(async () => {
     try {
-      const response = await axios.get("http://localhost:5000/game-types");
+      const response = await makeApiRequest('get', "http://localhost:5000/game-types");
       setGameTypes(response.data);
     } catch (error) {
       console.error("Error fetching game types:", error);
