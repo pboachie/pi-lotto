@@ -1,7 +1,8 @@
 // PiLottoDashboard.js
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import "../css/PiLottoDashboard.css";
+import { makeApiRequest } from '../utils/api';
+
 
 function PiLottoDashboard() {
   const [games, setGames] = useState([]);
@@ -12,7 +13,7 @@ function PiLottoDashboard() {
 
   const fetchGames = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/games");
+      const response = await makeApiRequest('get', "http://localhost:5000/api/games");
       setGames(response.data.games);
     } catch (error) {
       console.error("Error fetching games:", error);
