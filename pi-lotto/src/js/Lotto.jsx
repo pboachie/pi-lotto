@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react";
 import PurchaseModal from "./PurchaseModal";
 import "../css/Lotto.css";
-import axios from "axios";
+import { makeApiRequest } from '../utils/api';
+
 
 function Lotto() {
   const [numbers, setNumbers] = useState(Array(5).fill(null));
@@ -17,7 +18,7 @@ function Lotto() {
 
   const fetchTicketDetails = async () => {
     try {
-      const response = await axios.get(
+      const response = await makeApiRequest('get',
         "http://localhost:5000/api/ticket-details",
         {
           headers: {
