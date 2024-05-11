@@ -31,6 +31,7 @@ __pycache__/
 
 # Instance folder
 instance/
+*.db
 
 # -lock.json files
 package-lock.json
