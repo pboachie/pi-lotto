@@ -1,7 +1,8 @@
 // PiDeposit.jsx
 import React, { useState } from 'react';
-import axios from 'axios';
 import '../css/PiDeposit.css';
+import { makeApiRequest } from '../utils/api';
+
 
 const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance }) => {
   const [amount, setAmount] = useState('');
@@ -49,11 +50,7 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
 
     const fetchUserBalance = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/user-balance', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
-          },
-        });
+        const response = await makeApiRequest('get', 'http://localhost:5000/api/user-balance');
 
         if (response.status === 200) {
           return response.data.balance;
@@ -88,11 +85,7 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
       }
 
       // Get payment data from the server
-      const getPaymentData = await axios.post('http://localhost:5000/create_deposit', requestData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`
-        },
-      });
+      const getPaymentData = await makeApiRequest('post', 'http://localhost:5000/create_deposit', requestData);
 
       if (getPaymentData.status !== 200) {
         console.error('Payment data error:', getPaymentData.data.error);
@@ -110,12 +103,11 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
         onReadyForServerApproval: async (paymentId) => {
           try {
             const header = {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+              'Content-Type': 'application/json'
             };
 
             // Send the payment data to the backend for server-side approval
-            const response = await axios.post(
+            const response = await makeApiRequest('post',
               `http://localhost:5000/approve_payment/${paymentId}`,
               { paymentData },
               { headers: header }
@@ -140,14 +132,13 @@ const PiDeposit = ({ onClose, isAuthenticated, userBalance, updateUserBalance })
         onReadyForServerCompletion: async (paymentId, txid) => {
           try {
             const header = {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
+              'Content-Type': 'application/json'
             };
 
             console.log('Payment ID:', paymentId);
             console.log('TXID:', txid);
 
-            const response = await axios.post(
+            const response = await makeApiRequest('post',
               `http://localhost:5000/complete_payment/${paymentId}`,
               { paymentData, paymentId, txid },
               { headers: header }
