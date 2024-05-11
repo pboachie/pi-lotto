@@ -484,7 +484,7 @@ async def complete_payment(payment_id: str, request: Request, db: Session = Depe
         return JSONResponse({'error': 'Failed to complete payment'}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @app.post("/incomplete/{payment_id}")
-async def handle_incomplete_payment(payment_id: str, request: Request, db: Session = Depends(get_db)):
+async def handle_incomplete_payment(payment_id: str, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Get post data
     data = await request.json()
 
