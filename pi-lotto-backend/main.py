@@ -13,17 +13,13 @@ from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from src.db.database import get_db
-from src.utils.utils import load_config
+from src.utils.utils import load_config, configure_logging
+from src.auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi.middleware.cors import CORSMiddleware
 from src.db.models import Game, UserGame, User, Wallet, Transaction, TransactionLog, AccountTransaction, Payment, LottoStats, UserScopes, TransactionData, GameType, GameConfig, Session
 from src.pi_network.pi_python import PiNetwork
 
 app = FastAPI()
-
-
-# Load configuration from config.yml
-config = load_config()
-
 
 # Configure CORS
 app.add_middleware(
@@ -34,21 +30,8 @@ app.add_middleware(
     allow_headers=["*"],  # You can specify the allowed headers or use "*" to allow all headers
 )
 
-# Configure logging
-logging.basicConfig(level=config['logging']['level'],
-                    format=config['logging']['format'],
-                    handlers=[logging.StreamHandler()])
-
-# Add file handler if log file path is provided
-file_handler = logging.FileHandler(config['logging']['filePath'], mode='a', encoding=None, delay=False)
-logging.getLogger().addHandler(file_handler)
-
-# Set colorama to autoreset
-colorama.init(autoreset=True)
-
-SECRET_KEY = config['jwt']['secret_key']
-ALGORITHM = config['jwt']['algorithm']
-ACCESS_TOKEN_EXPIRE_MINUTES = config['jwt']['access_token_expire_minutes']
+config = load_config()
+configure_logging(config)
 
 
 # OAuth2 scheme for authentication
