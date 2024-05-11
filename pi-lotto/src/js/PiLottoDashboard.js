@@ -1,11 +1,14 @@
 // PiLottoDashboard.js
+
 import React, { useEffect, useState } from "react";
 import "../css/PiLottoDashboard.css";
 import { makeApiRequest } from '../utils/api';
+import Lotto from './Lotto';
 
 
 function PiLottoDashboard() {
   const [games, setGames] = useState([]);
+  const [selectedGame, setSelectedGame] = useState(null);
 
   useEffect(() => {
     fetchGames();
@@ -15,37 +18,29 @@ function PiLottoDashboard() {
     try {
       const response = await makeApiRequest('get', "http://localhost:5000/api/games");
       setGames(response.data.games);
+
+      // Save the first game to local storage
+      if (response.data.games.length > 0) {
+        localStorage.setItem("selectedGame", JSON.stringify(response.data.games[0]));
+      }
     } catch (error) {
       console.error("Error fetching games:", error);
     }
   };
 
-  const handleGameClick = (gameId) => {
-    // Load the selected game
-    console.log("Loading game with ID:", gameId);
-    // Add your logic to load the game component based on the gameId
+  const handleGameClick = (game) => {
+    console.log("Loading game with ID:", game.id);
+    localStorage.setItem("selectedGame", JSON.stringify(game));
+    setSelectedGame(game);
   };
 
-  //   const parseJsonConfig = (confData) => {
-  //     try {
-  //       let rawData = confData;
+  const handleBackToDashboard = () => {
+    setSelectedGame(null);
+  };
 
-  //       // Check if confData is already an object
-  //       if (typeof confData === "object") {
-  //         return rawData;
-  //       }
-
-  //       // Check if confData is a string
-  //       if (typeof rawData !== "string") {
-  //         rawData = JSON.stringify(rawData);
-  //       }
-
-  //       return JSON.parse(rawData);
-  //     } catch (error) {
-  //       console.error("Error parsing JSON config:", error);
-  //       return {};
-  //     }
-  //   };
+  if (selectedGame) {
+    return <Lotto game={selectedGame} onBackToDashboard={handleBackToDashboard} />;
+  }
 
   return (
     <div className="pi-lotto-dashboard">
@@ -53,18 +48,9 @@ function PiLottoDashboard() {
       <div className="game-list">
         {games.map((game) => {
           const drawSchedule = JSON.parse(game.game_config.draw_schedule);
-
           return (
-            <div
-              key={game.id}
-              className="game-card"
-              onClick={() => handleGameClick(game.id)}
-            >
-              <img
-                src={game.game_config.game_image}
-                alt={game.name}
-                className="game-image"
-              />
+            <div key={game.id} className="game-card" onClick={() => handleGameClick(game)}>
+              <img src={game.game_config.game_image} alt={game.name} className="game-image" />
               <div className="game-info">
                 <h3>{game.name}</h3>
                 <div className="game-details">
@@ -73,8 +59,7 @@ function PiLottoDashboard() {
                 </div>
                 <div className="draw-schedule">
                   <p>
-                    Draw: {drawSchedule.day} at{" "}
-                    <strong>{drawSchedule.time}</strong>
+                    Draw: {drawSchedule.day} at <strong>{drawSchedule.time}</strong>
                   </p>
                 </div>
               </div>

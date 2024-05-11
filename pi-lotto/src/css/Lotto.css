@@ -6,6 +6,34 @@
   padding: 20px;
 }
 
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.back-button {
+  background-color: transparent;
+  border: none;
+  font-size: 16px;
+  color: #007bff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.pool-size {
+  text-align: right;
+}
+
+.pool-amount {
+  font-size: 24px;
+  font-weight: bold;
+  color: #007bff;
+}
+
 .lotto-container {
   display: flex;
   flex-direction: column;
@@ -14,8 +42,6 @@
 }
 
 .lotto-ticket {
-  position: sticky;
-  top: 0;
   background-color: #f5f5f5;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -24,7 +50,6 @@
   margin-bottom: 20px;
   width: 100%;
   max-width: 400px;
-  z-index: 1;
 }
 
 .ticket-numbers {
@@ -69,6 +94,49 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.game-details {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.prize-distribution,
+.fees,
+.draw-schedule {
+  flex-basis: calc(33.33% - 10px);
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+@media screen and (max-width: 768px) {
+  .prize-distribution,
+  .fees,
+  .draw-schedule {
+    flex-basis: 100%;
+  }
+}
+
+
+.pool-amount {
+  font-size: 24px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.prize-distribution ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.prize-distribution li {
+  margin-bottom: 5px;
 }
 
 .number-selector-container {
@@ -138,6 +206,10 @@
 
   .lotto-ticket {
     margin-right: 20px;
+  }
+
+  .game-details {
+    flex-basis: calc(50% - 20px);
   }
 
   .number-selector-container {
