@@ -58,14 +58,7 @@ function PiLotto() {
   const fetchUserBalance = useCallback(async () => {
     try {
       const response = await makeApiRequest('get',
-        "http://localhost:5000/api/user-balance",
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem(
-              "@pi-lotto:access_token"
-            )}`,
-          },
-        }
+        "http://localhost:5000/api/user-balance"
       );
 
       const status = response.status === 200;
