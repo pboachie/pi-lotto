@@ -17,7 +17,7 @@ from src.utils.transactions import create_transaction, complete_transaction, upd
 
 from src.auth import DEV_DOCS_PASSWORD, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-from src.db.models import Game, User, Transaction, LottoStats, UserScopes, TransactionData, GameType, GameConfig, Session
+from src.db.models import Game, User, Transaction, LottoStats, UserScopes, TransactionData, GameType, GameConfig, Session, SignInResponse, SignInRequest
 from src.pi_network.pi_python import PiNetwork
 
 app = FastAPI()
@@ -55,10 +55,31 @@ async def read_root():
     return {"message": "Welcome to the Pi Lotto API"}
 
 
-@app.post("/signin")
-async def signin(request: Request, db: Session = Depends(get_db)):
+@app.post("/signin", response_model=SignInResponse)
+async def signin(request: SignInRequest, db: Session = Depends(get_db)):
+
+    """
+    Sign in endpoint.
+
+    This endpoint accepts the user's authentication result from the Pi Network API and generates access and refresh tokens.
+
+    - **authResult**: The authentication result object obtained from the Pi Network API.
+        - **accessToken**: The access token from the Pi Network API.
+
+    Returns:
+    - **access_token**: The generated JWT access token.
+    - **refresh_token**: The generated JWT refresh token.
+
+    Possible error responses:
+    - **400 Bad Request**: Invalid JSON format in the request body or missing keys in the request body.
+    - **401 Unauthorized**: Invalid authorization or user not authorized.
+    - **404 Not Found**: User not found.
+    - **500 Internal Server Error**: An internal server error occurred.
+    """
+
     try:
-        data = await request.json()
+        data = request.json()
+        data = json.loads(data)
         auth_result = data['authResult']
         access_token = auth_result['accessToken']
 
@@ -91,24 +112,15 @@ async def signin(request: Request, db: Session = Depends(get_db)):
         logging.info(colorama.Fore.GREEN + f"SIGNIN: User {user.username} signed in successfully")
         return JSONResponse({'access_token': access_token, 'refresh_token': refresh_token})
 
-    except json.JSONDecodeError:
-        logging.error("Invalid JSON format in request body")
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": "Invalid JSON format in request body"},
-        )
-
     except KeyError as e:
-        logging.error(f"Missing key in request body: {str(e)}")
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": f"Missing key in request body: {str(e)}"},
-        )
+            logging.error(f"Missing key in request body: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Missing key in request body: {str(e)}")
 
     except requests.exceptions.RequestException as err:
         logging.error(err)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not authorized')
-    
+
+
 # if debug mode is enabled, enable this endpoint
 if config['app']['debug'] == True:
     @app.post("/token")
@@ -122,10 +134,13 @@ if config['app']['debug'] == True:
             if form_data.password != str(DEV_DOCS_PASSWORD):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-            access_token_expires = timedelta(minutes=60)
-            access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+            if user.active:
+                access_token_expires = timedelta(minutes=60)
+                access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
 
-            return {"access_token": access_token, "token_type": "bearer"}
+                return {"access_token": access_token, "token_type": "bearer"}
+
+            return {"error": "User not found"}
         except HTTPException as e:
             logging.error(f"Error logging in: {str(e)}")
             raise e
