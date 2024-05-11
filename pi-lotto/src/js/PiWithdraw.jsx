@@ -1,7 +1,7 @@
 // PiWithdraw.jsx
 import React, { useState } from 'react';
-import axios from 'axios';
 import '../css/PiWithdraw.css';
+import { makeApiRequest } from '../utils/api';
 
 const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }) => {
   const [amount, setAmount] = useState('');
@@ -59,17 +59,11 @@ const PiWithdraw = ({ onClose, isAuthenticated, userBalance, updateUserBalance }
     setIsLoading(true);
 
     try {
-      const response = await axios.post(
+      const response = await makeApiRequest('post',
         'http://localhost:5000/create_withdrawal',
         {
           amount: parseFloat(amount)
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
-          },
-        }
-      );
+        });
 
       if (response.status === 200) {
         setPaymentStatus('Withdrawal successful');
