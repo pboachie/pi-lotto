@@ -67,11 +67,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
       console.log('Incomplete payment found:', response.data);
 
       // Fetch the updated user balance from the server
-      const balanceResponse = await makeApiRequest('get', 'http://localhost:5000/api/user-balance', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('@pi-lotto:access_token')}`,
-        },
-      });
+      const balanceResponse = await makeApiRequest('get', 'http://localhost:5000/api/user-balance');
 
       if (balanceResponse.status === 200) {
         const updatedBalance = balanceResponse.data.balance;
