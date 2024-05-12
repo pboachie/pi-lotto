@@ -41,7 +41,10 @@ async def read_root():
 
 @app.get("/loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf/")
 async def loaderio_verification():
-    return 'loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf'
+    msg = 'loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf'
+    header = {'Content-Type': 'application/json'}
+    # return msg without quotes
+    return JSONResponse(content=msg, headers=header)
 
 def serve(use_gunicorn, n_workers, host, port):
     #   api_key: str = typer.Option(NO_API_KEY, prompt=True, hide_input=True, show_default=True, confirmation_prompt=True),

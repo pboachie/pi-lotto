@@ -76,7 +76,6 @@ async def signin(request: SignInRequest, db: Session = Depends(get_db_session), 
         logging.error(err)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not authorized')
 
-
 # if debug mode is enabled, enable this endpoint
 if get_config()['app']['debug'] == True:
     @app.post("/token")
