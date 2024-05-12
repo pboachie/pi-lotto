@@ -95,7 +95,7 @@ if __name__ == "__main__":
     n_workers: int = 1
     host: str = config['app']['host']
     port: int = config['app']['port']
-    n_workers: int = (multiprocessing.cpu_count() * 2) + 1,
+    n_workers: int = (multiprocessing.cpu_count() * 2) + 1
 
 
     for arg in sys.argv:
