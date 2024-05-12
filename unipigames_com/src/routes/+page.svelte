@@ -1,2 +1,7 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<h1>Welcome to UNI PI Games</h1>
+<center>
+    <p>UNI PI Games is a platform for earning Pi Coins.</p>
+</center>
+
+<!-- Let user know this site is currently in progress -->
+<p><b>This site is currently in progress. Please check back later.</b></p>
