@@ -1,11 +1,9 @@
 # main.py
 
 import multiprocessing
-# import spacy
-from fastapi import FastAPI, Request, status
-from fastapi.routing import APIRouter
+import sys
 from src.utils.utils import logging, JSONResponse
-from src.dependencies import get_config, app
+from src.dependencies import get_config, app , APIRouter, Request, status
 
 # Import the route files
 from src.auth_routes import auth_router
@@ -45,59 +43,86 @@ async def read_root():
 async def loaderio_verification():
     return 'loaderio-28b24b7ab3f2743ac5e4b68dcdf851bf'
 
-# def serve(
-#     model: str,
-#     #   api_key: str = typer.Option(NO_API_KEY, prompt=True, hide_input=True, show_default=True, confirmation_prompt=True),
-#     host: str = config['app']['host'],
-#     port: int = config['app']['port'],
-#     use_gunicorn: bool = False,
-#     n_workers: int = (multiprocessing.cpu_count() * 2) + 1,
-# ):
+def serve(use_gunicorn, n_workers, host, port):
+    #   api_key: str = typer.Option(NO_API_KEY, prompt=True, hide_input=True, show_default=True, confirmation_prompt=True),
+    import uvicorn
+    from starlette.requests import Request
 
-#     import uvicorn
-#     from starlette.requests import Request
+    if use_gunicorn:
+        print(f"Starting server with suggested workers of {n_workers}.")
+    else:
+        print("Starting server. To use Gunicorn, run with --enableWorker flag. To specify number of workers, use --workers flag.")
 
-#     nlp = spacy.load(model)
+    @app.middleware("http")
+    async def update_request_state(request: Request, call_next):
+        # request.state.api_key = api_key
+        response = await call_next(request)
+        return response
 
-#     @app.middleware("http")
-#     async def update_request_state(request: Request, call_next):
-#         request.state.nlp = nlp
-#         # request.state.api_key = api_key
-#         response = await call_next(request)
-#         return response
+    if use_gunicorn:
+        from gunicorn.app.wsgiapp import WSGIApplication
 
-#     if use_gunicorn:
-#         from gunicorn.app.wsgiapp import WSGIApplication
+        class FastAPIApplication(WSGIApplication):
+            def __init__(self, app, options=None):
+                self.options = options or {}
+                self.application = app
+                super().__init__()
 
-#         class FastAPIApplication(WSGIApplication):
-#             def __init__(self, app, options=None):
-#                 self.options = options or {}
-#                 self.application = app
-#                 super().__init__()
+            def load_config(self):
+                config = {
+                    key: value
+                    for key, value in self.options.items()
+                    if key in self.cfg.settings and value is not None
+                }
+                for key, value in config.items():
+                    self.cfg.set(key.lower(), value)
 
-#             def load_config(self):
-#                 config = {
-#                     key: value
-#                     for key, value in self.options.items()
-#                     if key in self.cfg.settings and value is not None
-#                 }
-#                 for key, value in config.items():
-#                     self.cfg.set(key.lower(), value)
+            def load(self):
+                return self.application
 
-#             def load(self):
-#                 return self.application
-
-#         options = {
-#             "bind": f"{host}:{port}",
-#             "workers": n_workers,
-#             "worker_class": "uvicorn.workers.UvicornWorker",
-#         }
-#         FastAPIApplication(app, options).run()
-#     else:
-#         uvicorn.run(app, host=host, port=port)
+        options = {
+            "bind": f"{host}:{port}",
+            "workers": n_workers,
+            "worker_class": "uvicorn.workers.UvicornWorker",
+        }
+        FastAPIApplication(app, options).run()
+    else:
+        uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
-    import uvicorn
-    # Run with 4 workers
-    # serve("en_core_web_sm", use_gunicorn=True, n_workers=4)
-    uvicorn.run(app, host=config['app']['host'], port=config['app']['port'])
+
+    use_gunicorn: bool = False
+    n_workers: int = 1
+    host: str = config['app']['host']
+    port: int = config['app']['port']
+    n_workers: int = (multiprocessing.cpu_count() * 2) + 1,
+
+
+    for arg in sys.argv:
+
+
+        if arg.startswith("--enableWorker"):
+            use_gunicorn = True
+
+        if arg.startswith("--workers="):
+            n_workers = int(arg.split("=")[1])
+
+        if arg.startswith("--host="):
+            host = arg.split("=")[1]
+
+        if arg.startswith("--port="):
+            port = int(arg.split("=")[1])
+
+        # help flag
+        if arg.startswith("--help"):
+            #Print default values
+            print(f"Default values: use_gunicorn: {use_gunicorn}, n_workers: {n_workers}, host: {host}, port: {port}")
+            print("Usage: python main.py [--enableWorker] [--workers=2] [--host=localhost] [--port=5000]")
+
+            print("--enableWorker: Enable Gunicorn server")
+            print("--workers: Number of workers for Gunicorn server")
+            print("--host: Host address")
+            print("--port: Port number")
+            sys.exit()
+
+    serve(use_gunicorn=use_gunicorn, n_workers=n_workers, host=host, port=port)
