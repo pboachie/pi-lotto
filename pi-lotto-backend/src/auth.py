@@ -1,6 +1,7 @@
 # src/auth.py
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from src.utils.utils import load_config
+from jose import JWTError, jwt
 
 config = load_config()
 

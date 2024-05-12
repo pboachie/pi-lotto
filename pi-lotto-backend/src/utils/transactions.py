@@ -1,13 +1,12 @@
 # src/utils/transactions.py
 from typing import Optional
-from typing_extensions import Annotated
-from fastapi import Depends, HTTPException, status
 from jose import JWTError, jwt
-from src.db.database import get_db
+from typing_extensions import Annotated
 from datetime import datetime, timedelta, timezone
 from src.utils.utils import colorama, logging, uuid
 from src.auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OAUTH2_SCHEME
 from src.db.models import User, UserScopes, Game, Transaction, TransactionData, Payment, TransactionLog, Session
+from src.dependencies import get_db_session, Depends, status, HTTPException
 
 
 # Function to store user data in the database
@@ -118,7 +117,7 @@ def create_transaction_log(transaction_id: str, log_message: str, db: Session):
         db.rollback()
         logging.error(f"Error creating transaction log: {str(e)}")
 
-def create_transaction(user_id: int, ref_id: str, wallet_id: int, amount: float, transaction_type: str, memo: str, status: str, id: str = None, transactionData: dict = None, db: Session = Depends(get_db)):
+def create_transaction(user_id: int, ref_id: str, wallet_id: int, amount: float, transaction_type: str, memo: str, status: str, id: str = None, transactionData: dict = None, db: Session = Depends(get_db_session)):
     try:
         if id is None:
             transaction_id = str(uuid.uuid4())
@@ -182,7 +181,7 @@ def complete_transaction(transaction_id: str, txid: str, db: Session):
         return False
 
 # Dependency to get the current user
-async def get_current_user(token: str = Depends(OAUTH2_SCHEME), db: Session = Depends(get_db)):
+async def get_current_user(token: str = Depends(OAUTH2_SCHEME), db: Session = Depends(get_db_session)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
