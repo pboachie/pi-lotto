@@ -2,6 +2,9 @@
 ```bash
 cd pi-lotto/pi-lotto
 
+# Install npm
+apt-get install npm
+
 # Install the dependencies
 npm install
 
