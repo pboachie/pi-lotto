@@ -122,7 +122,7 @@ function Lotto({ game, onBackToDashboard }) {
       .map(([key, value]) => {
         const matchedNumbers = key.includes('_with_power') ? key.replace('_with_power', '').split('+').length : parseInt(key);
         const prizeAmount = calculatePrizeAmount(matchedNumbers);
-        return `Match ${matchedNumbers} number${matchedNumbers > 1 ? 's' : ''}: ${(value * 100).toFixed(2)}% (${prizeAmount} ${process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'})`;
+        return `Match ${matchedNumbers} number${matchedNumbers > 1 ? 's' : ''}, win ${(value * 100).toFixed(2)}% (${prizeAmount} ${process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'})`;
       })
       .join(', ');
 
