@@ -5,9 +5,6 @@ cd pi-lotto/pi-lotto
 # Install npm
 apt-get install npm
 
-# Install the dependencies
-npm install
-
 # Copy the .env.example file to .env
 cp .env.example .env
 

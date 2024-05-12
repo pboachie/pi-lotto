@@ -58,7 +58,7 @@ function PiLotto() {
   const fetchUserBalance = useCallback(async () => {
     try {
       const response = await makeApiRequest('get',
-        "http://localhost:5000/api/user-balance"
+        "https://api.unipigames.com/api/user-balance"
       );
 
       const status = response.status === 200;
@@ -77,7 +77,7 @@ function PiLotto() {
 
   const fetchGameTypes = useCallback(async () => {
     try {
-      const response = await makeApiRequest('get', "http://localhost:5000/game-types");
+      const response = await makeApiRequest('get', "https://api.unipigames.com/game-types");
       setGameTypes(response.data);
     } catch (error) {
       console.error("Error fetching game types:", error);

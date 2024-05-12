@@ -31,7 +31,7 @@ function Lotto({ game, onBackToDashboard }) {
 
   const fetchTicketDetails = async () => {
     try {
-      const response = await makeApiRequest('get', "http://localhost:5000/api/ticket-details", {
+      const response = await makeApiRequest('get', "https://api.unipigames.com/api/ticket-details", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("@pi-lotto:access_token")}`,
         },

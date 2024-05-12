@@ -16,7 +16,7 @@ function PiLottoDashboard() {
 
   const fetchGames = async () => {
     try {
-      const response = await makeApiRequest('get', "http://localhost:5000/api/games");
+      const response = await makeApiRequest('get', "https://api.unipigames.com/api/games");
       setGames(response.data.games);
 
       // Save the first game to local storage
