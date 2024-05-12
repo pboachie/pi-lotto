@@ -8,6 +8,9 @@ npm install
 # Copy the .env.example file to .env
 cp .env.example .env
 
+# Install the dependencies
+npm install
+
 # Start the development server
 npm start
 ```
