@@ -33,7 +33,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
       });
 
       // Fetch the access token from the server
-      const response = await axios.post('https://api.unipigames.com/signin', { authResult });
+      const response = await axios.post('http://localhost:5000/signin', { authResult });
 
 
       // Return false if status is not 200
@@ -58,7 +58,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
     try {
       // Get paymentId
       const paymentId = payment.identifier;
-      const response = await makeApiRequest('post', 'https://api.unipigames.com/incomplete/'+ paymentId, { payment });
+      const response = await makeApiRequest('post', 'http://localhost:5000/incomplete/'+ paymentId, { payment });
 
       if (response.status !== 200) {
         console.error('Incomplete payment error:', response.data.error);
@@ -69,7 +69,7 @@ function PiAuthentication({ onAuthentication, isAuthenticated, onBalanceUpdate }
       console.log('Incomplete payment found:', response.data);
 
       // Fetch the updated user balance from the server
-      const balanceResponse = await makeApiRequest('get', 'https://api.unipigames.com/api/user-balance');
+      const balanceResponse = await makeApiRequest('get', 'http://localhost:5000/api/user-balance');
 
       if (balanceResponse.status === 200) {
         const updatedBalance = balanceResponse.data.balance;
