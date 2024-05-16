@@ -1,10 +1,10 @@
 // PurchaseModal.jsx
-import React, { useEffect, useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import JsBarcode from 'jsbarcode';
 import '../css/PurchaseModal.css';
 
-function PurchaseModal({ numberSets = [], ticketNumber, ticketPrice, baseFee, serviceFee, onClose }) {
+function PurchaseModal({ numberSets = [], ticketNumber, ticketPrice, baseFee, serviceFee, onClose, onConfirmPurchase }) {
   const totalCost = ticketPrice + baseFee + serviceFee;
   const barcodeRef = useRef(null);
 
@@ -12,17 +12,20 @@ function PurchaseModal({ numberSets = [], ticketNumber, ticketPrice, baseFee, se
     if (barcodeRef.current) {
       JsBarcode(barcodeRef.current, ticketNumber, {
         format: 'code128',
-        width: 2,
+        width: 1,
         height: 50,
         displayValue: true,
         text: ticketNumber,
         textAlign: 'center',
         textPosition: 'bottom',
         textMargin: 0,
-        fontSize: 12,
+        fontSize: 10,
       });
     }
   }, [ticketNumber]);
+
+
+
 
   return ReactDOM.createPortal(
     <div className="modal-overlay">
@@ -48,7 +51,7 @@ function PurchaseModal({ numberSets = [], ticketNumber, ticketPrice, baseFee, se
           )}
         </div>
         <div className="ticket-details-section">
-          <p className="ticket-number-label">Ticket#: {ticketNumber}</p>
+        <p className="ticket-number-label">Ticket#: {ticketNumber}</p>
           <div className="ticket-cost-section">
             <p>Ticket Price: {ticketPrice} π</p>
             <p>Base Fee: {baseFee} π</p>
@@ -59,6 +62,7 @@ function PurchaseModal({ numberSets = [], ticketNumber, ticketPrice, baseFee, se
         <div className="ticket-barcode-section">
           <svg ref={barcodeRef} />
         </div>
+        <button className="purchase-button" onClick={onConfirmPurchase}>Confirm</button>
         <button className="close-button" onClick={onClose}>
           Close
         </button>

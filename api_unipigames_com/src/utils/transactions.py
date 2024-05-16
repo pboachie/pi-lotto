@@ -5,7 +5,7 @@ from typing_extensions import Annotated
 from datetime import datetime, timedelta, timezone
 from src.utils.utils import colorama, logging, uuid
 from src.auth import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, OAUTH2_SCHEME
-from src.db.models import User, UserScopes, Game, Transaction, TransactionData, Payment, TransactionLog, Session
+from src.db.models import User, UserScopes, Game, Transaction, TransactionData, Payment, TransactionLog, Session, AccountTransaction
 from src.dependencies import get_db_session, Depends, status, HTTPException
 
 
@@ -200,3 +200,42 @@ async def get_current_user(token: str = Depends(OAUTH2_SCHEME), db: Session = De
         raise credentials_exception
 
     return user
+
+def create_account_transaction(user_id, transaction_type, amount, reference_id, db):
+    try:
+        user = db.query(User).get(user_id)
+        if not user:
+            raise ValueError('User not found')
+
+        # Update user balance based on transaction type
+        if transaction_type == 'deposit':
+            user.balance += amount
+        elif transaction_type == 'withdrawal':
+            if user.balance < amount:
+                raise ValueError('Insufficient balance for withdrawal')
+            user.balance -= amount
+        elif transaction_type == 'game_entry' or transaction_type == 'lotto_entry':
+            if user.balance < amount:
+                raise ValueError('Insufficient balance for game entry')
+            user.balance -= amount
+        elif transaction_type == 'game_winnings' or transaction_type == 'lotto_winnings':
+            user.balance += amount
+        else:
+            raise ValueError('Invalid transaction type')
+
+        # Create the account transaction
+        new_transaction = AccountTransaction(
+            user_id=user_id,
+            transaction_type=transaction_type,
+            amount=amount,
+            reference_id=reference_id
+        )
+        db.add(new_transaction)
+
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Failed to create account transaction: {str(e)}")
+        return False
+
