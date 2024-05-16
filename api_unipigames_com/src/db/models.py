@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker, Session
 from sqlalchemy.sql import func
@@ -37,6 +37,36 @@ class SignInResponse(BaseModel):
     refresh_token: str
 # ================================================
 
+# ==== User request and response models =====
+
+# ================================================
+def after_insert_ticket(mapper, connection, target):
+    # Create a new LottoStats entry for the new ticket
+    new_lotto_stats = LottoStats(
+        user_id=target.user_id,
+        game_id=target.game_id,
+        numbers_played=target.numbers_played,
+        win_amount=0.0  # Initially set win_amount to 0.0
+    )
+    session = Session(bind=connection)
+    session.add(new_lotto_stats)
+    session.commit()
+
+# Listener for after_update event on Ticket
+def after_update_ticket(mapper, connection, target):
+    # Update the corresponding LottoStats entry for the ticket
+    session = Session(bind=connection)
+    lotto_stats = session.query(LottoStats).filter_by(
+        user_id=target.user_id,
+        game_id=target.game_id
+    ).first()
+    if lotto_stats:
+        lotto_stats.numbers_played = target.numbers_played
+        session.commit()
+
+# ================================================
+
+# ==== User request and response models =====
 class Game(Base):
     __tablename__ = 'game'
 
@@ -169,3 +199,16 @@ class GameConfig(Base):
     config_value = Column(String(255), nullable=False)
     dateCreated = Column(DateTime, default=func.current_timestamp())
     dateModified = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+class Ticket(Base):
+    __tablename__ = 'ticket'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    game_id = Column(Integer, ForeignKey('game.id'), nullable=False)
+    transaction_id = Column(String(100), ForeignKey('transaction.id'), nullable=False)
+    numbers_played = Column(String(100), nullable=False)
+    power_number = Column(Integer, nullable=False)
+    date_purchased = Column(DateTime, default=func.current_timestamp())
+
+# ================================================
