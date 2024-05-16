@@ -64,6 +64,31 @@ def after_update_ticket(mapper, connection, target):
         lotto_stats.numbers_played = target.numbers_played
         session.commit()
 
+# Listener for after_insert event on UserGame
+def after_insert_user_game(mapper, connection, target):
+    """Create a new LottoStats entry for the new UserGame"""
+    new_lotto_stats = LottoStats(
+        user_id=target.user_id,
+        game_id=target.game_id,
+        numbers_played="",  # Initially set numbers_played to an empty string
+        win_amount=0.0      # Initially set win_amount to 0.0
+    )
+    session = Session(bind=connection)
+    session.add(new_lotto_stats)
+    session.commit()
+
+# Listener for after_update event on UserGame
+def after_update_user_game(mapper, connection, target):
+    """Update the corresponding LottoStats entry for the UserGame"""
+    session = Session(bind=connection)
+    lotto_stats = session.query(LottoStats).filter_by(
+        user_id=target.user_id,
+        game_id=target.game_id
+    ).first()
+    if lotto_stats:
+        # Update any fields in LottoStats based on UserGame update
+        session.commit()
+
 # ================================================
 
 # ==== User request and response models =====
