@@ -1,5 +1,6 @@
 annotated-types==0.6.0
 anyio==4.3.0
+APScheduler==3.10.4
 blis==0.7.11
 catalogue==2.0.10
 certifi==2024.2.2
@@ -47,6 +48,7 @@ PyNaCl==1.5.0
 python-dotenv==1.0.1
 python-jose==3.3.0
 python-multipart==0.0.9
+pytz==2024.1
 PyYAML==6.0.1
 requests==2.31.0
 requests-sse==0.3.2
@@ -65,6 +67,7 @@ toml==0.10.2
 tqdm==4.66.4
 typer==0.12.3
 typing_extensions==4.11.0
+tzlocal==5.2
 ujson==5.9.0
 urllib3==2.2.1
 uuid==1.30

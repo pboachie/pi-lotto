@@ -3,7 +3,10 @@
 import multiprocessing
 import sys
 from src.utils.utils import logging, JSONResponse
-from src.dependencies import get_config, app , APIRouter, Request, status
+from src.dependencies import get_config, app, APIRouter, Request, status
+from apscheduler.schedulers.background import BackgroundScheduler
+from src.db.database import update_pool_amount
+from src.utils.utils import load_config
 
 # Import the route files
 from src.auth_routes import auth_router
@@ -46,8 +49,13 @@ async def loaderio_verification():
     # return msg without quotes
     return JSONResponse(content=msg, headers=header)
 
+
+def start_scheduler():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(update_pool_amount, 'interval', minutes=1)
+    scheduler.start()
+
 def serve(use_gunicorn, n_workers, host, port):
-    #   api_key: str = typer.Option(NO_API_KEY, prompt=True, hide_input=True, show_default=True, confirmation_prompt=True),
     import uvicorn
     from starlette.requests import Request
 
@@ -58,7 +66,6 @@ def serve(use_gunicorn, n_workers, host, port):
 
     @app.middleware("http")
     async def update_request_state(request: Request, call_next):
-        # request.state.api_key = api_key
         response = await call_next(request)
         return response
 
@@ -93,6 +100,7 @@ def serve(use_gunicorn, n_workers, host, port):
         uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
+    start_scheduler()
 
     use_gunicorn: bool = False
     n_workers: int = 1
@@ -100,10 +108,7 @@ if __name__ == "__main__":
     port: int = config['app']['port']
     n_workers: int = (multiprocessing.cpu_count() * 2) + 1
 
-
     for arg in sys.argv:
-
-
         if arg.startswith("--enableWorker"):
             use_gunicorn = True
 
@@ -118,10 +123,9 @@ if __name__ == "__main__":
 
         # help flag
         if arg.startswith("--help"):
-            #Print default values
+            # Print default values
             print(f"Default values: use_gunicorn: {use_gunicorn}, n_workers: {n_workers}, host: {host}, port: {port}")
             print("Usage: python main.py [--enableWorker] [--workers=2] [--host=localhost] [--port=5000]")
-
             print("--enableWorker: Enable Gunicorn server")
             print("--workers: Number of workers for Gunicorn server")
             print("--host: Host address")
