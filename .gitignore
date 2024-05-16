@@ -5,7 +5,7 @@
 /.pnp
 .pnp.js
 .venv
-
+venv/
 # testing
 /coverage
 
