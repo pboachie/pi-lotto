@@ -65,29 +65,42 @@ def after_update_ticket(mapper, connection, target):
         session.commit()
 
 # Listener for after_insert event on UserGame
-def after_insert_user_game(mapper, connection, target):
-    """Create a new LottoStats entry for the new UserGame"""
-    new_lotto_stats = LottoStats(
-        user_id=target.user_id,
-        game_id=target.game_id,
-        numbers_played="",  # Initially set numbers_played to an empty string
-        win_amount=0.0      # Initially set win_amount to 0.0
-    )
+def after_insert_ticket(mapper, connection, target):
+    """Create a new UserGame entry when a Ticket is purchased"""
     session = Session(bind=connection)
-    session.add(new_lotto_stats)
-    session.commit()
 
-# Listener for after_update event on UserGame
-def after_update_user_game(mapper, connection, target):
-    """Update the corresponding LottoStats entry for the UserGame"""
-    session = Session(bind=connection)
-    lotto_stats = session.query(LottoStats).filter_by(
+    # Check if a UserGame record already exists for this user and game
+    user_game = session.query(UserGame).filter_by(
         user_id=target.user_id,
         game_id=target.game_id
     ).first()
-    if lotto_stats:
-        # Update any fields in LottoStats based on UserGame update
+
+    if not user_game:
+        new_user_game = UserGame(
+            user_id=target.user_id,
+            game_id=target.game_id
+        )
+        session.add(new_user_game)
         session.commit()
+
+    session.close()
+
+# Listener for after_update event on UserGame
+def after_update_game_winner(mapper, connection, target):
+    """Update UserGame entry when a game is won"""
+    if target.winner_id:
+        session = Session(bind=connection)
+
+        user_game = session.query(UserGame).filter_by(
+            user_id=target.winner_id,
+            game_id=target.id
+        ).first()
+
+        if user_game:
+            user_game.is_winner = True  # Assuming you have an is_winner field in UserGame
+            session.commit()
+
+        session.close()
 
 # ================================================
 
@@ -115,6 +128,7 @@ class UserGame(Base):
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     game_id = Column(Integer, ForeignKey('game.id'), nullable=False)
     dateJoined = Column(DateTime, default=func.current_timestamp())
+    is_winner = Column(Boolean, default=False)
 
 class User(Base):
     __tablename__ = 'user'
