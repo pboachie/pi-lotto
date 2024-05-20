@@ -2,7 +2,8 @@
 from src.db.models import Session
 from fastapi import Depends, status, APIRouter
 from src.utils.utils import JSONResponse
-from src.db.models import User, Game, Ticket, LottoStats
+from src.utils.transactions import logging
+from src.db.models import User, Game, Ticket, LottoStats, GameConfig
 from src.utils.transactions import get_current_user
 from src.dependencies import get_db_session
 
