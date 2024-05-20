@@ -7,7 +7,6 @@ import datetime
 
 Base = declarative_base()
 
-# ==== Sign in request and response models =====
 class Session(Session):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,83 +28,13 @@ class bm_authResult(BaseModel):
     user: bm_user
     accessToken: str
 
-
 class SignInRequest(BaseModel):
     authResult: bm_authResult
 
 class SignInResponse(BaseModel):
     access_token: str
     refresh_token: str
-# ================================================
 
-# ==== User request and response models =====
-
-# ================================================
-def after_insert_ticket(mapper, connection, target):
-    # Create a new LottoStats entry for the new ticket
-    new_lotto_stats = LottoStats(
-        user_id=target.user_id,
-        game_id=target.game_id,
-        numbers_played=target.numbers_played,
-        win_amount=0.0  # Initially set win_amount to 0.0
-    )
-    session = Session(bind=connection)
-    session.add(new_lotto_stats)
-    session.commit()
-
-# Listener for after_update event on Ticket
-def after_update_ticket(mapper, connection, target):
-    # Update the corresponding LottoStats entry for the ticket
-    session = Session(bind=connection)
-    lotto_stats = session.query(LottoStats).filter_by(
-        user_id=target.user_id,
-        game_id=target.game_id
-    ).first()
-    if lotto_stats:
-        lotto_stats.numbers_played = target.numbers_played
-        session.commit()
-
-# Listener for after_insert event on UserGame
-def after_insert_ticket(mapper, connection, target):
-    """Create a new UserGame entry when a Ticket is purchased"""
-    session = Session(bind=connection)
-
-    # Check if a UserGame record already exists for this user and game
-    user_game = session.query(UserGame).filter_by(
-        user_id=target.user_id,
-        game_id=target.game_id
-    ).first()
-
-    if not user_game:
-        new_user_game = UserGame(
-            user_id=target.user_id,
-            game_id=target.game_id
-        )
-        session.add(new_user_game)
-        session.commit()
-
-    session.close()
-
-# Listener for after_update event on UserGame
-def after_update_game_winner(mapper, connection, target):
-    """Update UserGame entry when a game is won"""
-    if target.winner_id:
-        session = Session(bind=connection)
-
-        user_game = session.query(UserGame).filter_by(
-            user_id=target.winner_id,
-            game_id=target.id
-        ).first()
-
-        if user_game:
-            user_game.is_winner = True  # Assuming you have an is_winner field in UserGame
-            session.commit()
-
-        session.close()
-
-# ================================================
-
-# ==== User request and response models =====
 class Game(Base):
     __tablename__ = 'game'
 
@@ -121,6 +50,7 @@ class Game(Base):
     dateModified = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
     max_players = Column(Integer, nullable=False, default=0)
     user_games = relationship('UserGame', backref='game', lazy='dynamic')
+    tickets = relationship('Ticket', back_populates='game')
 
 class UserGame(Base):
     __tablename__ = 'user_game'
@@ -141,6 +71,8 @@ class User(Base):
     active = Column(Boolean, default=True)
     dateCreated = Column(DateTime, default=func.current_timestamp())
     dateModified = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
+    user_games = relationship('UserGame', backref='user', lazy='dynamic')
+    tickets = relationship('Ticket', back_populates='user')
 
 class Wallet(Base):
     __tablename__ = 'wallet'
@@ -201,6 +133,7 @@ class LottoStats(Base):
     game_id = Column(String(100), nullable=False)
     numbers_played = Column(String(100), nullable=False)
     win_amount = Column(Float, nullable=False)
+    prize_claimed = Column(Boolean, default=False)
 
 class UserScopes(Base):
     __tablename__ = 'user_scopes'
@@ -250,5 +183,43 @@ class Ticket(Base):
     numbers_played = Column(String(100), nullable=False)
     power_number = Column(Integer, nullable=False)
     date_purchased = Column(DateTime, default=func.current_timestamp())
+    user = relationship('User', back_populates='tickets')
+    game = relationship('Game', back_populates='tickets')
 
-# ================================================
+@event.listens_for(Ticket, 'after_insert')
+def after_insert_ticket(mapper, connection, target):
+    new_lotto_stats = LottoStats(
+        user_id=target.user_id,
+        game_id=target.game_id,
+        numbers_played=target.numbers_played,
+        win_amount=0.0  # Initially set win_amount to 0.0
+    )
+    session = Session(bind=connection)
+    session.add(new_lotto_stats)
+    session.commit()
+    session.close()
+
+@event.listens_for(Ticket, 'after_update')
+def after_update_ticket(mapper, connection, target):
+    session = Session(bind=connection)
+    lotto_stats = session.query(LottoStats).filter_by(
+        user_id=target.user_id,
+        game_id=target.game_id
+    ).first()
+    if lotto_stats:
+        lotto_stats.numbers_played = target.numbers_played
+        session.commit()
+    session.close()
+
+@event.listens_for(Game, 'after_update')
+def after_update_game_winner(mapper, connection, target):
+    if target.winner_id:
+        session = Session(bind=connection)
+        user_game = session.query(UserGame).filter_by(
+            user_id=target.winner_id,
+            game_id=target.id
+        ).first()
+        if user_game:
+            user_game.is_winner = True  # Assuming you have an is_winner field in UserGame
+            session.commit()
+        session.close()

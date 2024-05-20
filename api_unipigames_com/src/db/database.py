@@ -1,10 +1,26 @@
 # src/db/database.py
 
 from sqlalchemy import create_engine, event
-from src.db.models import Base, sessionmaker, Session, Ticket, Game, Transaction, after_insert_ticket, after_update_ticket, after_update_game_winner, after_insert_ticket
+from sqlalchemy.orm import sessionmaker
+from src.db.models import Base, Session, Ticket, Game, Transaction, after_insert_ticket, after_update_ticket, after_update_game_winner
 from src.utils.utils import load_config
 from sqlalchemy.sql import func
-import datetime, timedelta
+import datetime
+
+# Load configuration
+config = load_config()
+
+# Configure the database connection
+engine = create_engine(config['database']['uri'])
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create all tables
+Base.metadata.create_all(bind=engine)
+
+# Attach the listeners to the Ticket and Game models
+event.listen(Ticket, 'after_insert', after_insert_ticket)
+event.listen(Ticket, 'after_update', after_update_ticket)
+event.listen(Game, 'after_update', after_update_game_winner)
 
 def get_db():
     db = SessionLocal()
@@ -13,28 +29,9 @@ def get_db():
     finally:
         db.close()
 
-# Configure the database connection
-
-config = load_config()
-
-engine = create_engine(config['database']['uri'])
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base.metadata.create_all(bind=engine)
-
-# ==== Database triggers =====
-# Attach the listeners to the Ticket model
-event.listen(Ticket, 'after_insert', after_insert_ticket)
-event.listen(Ticket, 'after_update', after_update_ticket)
-
-# Attach the listeners to the Ticket and Game models
-event.listen(Ticket, 'after_insert', after_insert_ticket)
-event.listen(Game, 'after_update', after_update_game_winner)
-
 def update_pool_amount():
+    session = SessionLocal()
     try:
-        session = SessionLocal()
-
         # Get all active games
         games = session.query(Game).filter(Game.status == 'active').all()
         for game in games:
@@ -55,9 +52,9 @@ def update_pool_amount():
         session.close()
 
 def cancel_old_pending_lotto_entries():
+    session = SessionLocal()
     try:
-        session = SessionLocal()
-        cutoff_time = datetime.now() - timedelta(hours=8)
+        cutoff_time = datetime.datetime.now() - datetime.timedelta(hours=8)
 
         # Update transactions that are 'lotto_entry', 'pending', and older than 8 hours
         session.query(Transaction).filter(
@@ -72,4 +69,3 @@ def cancel_old_pending_lotto_entries():
         print(f"Error updating pending lotto transactions to cancelled: {e}")
     finally:
         session.close()
-
