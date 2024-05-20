@@ -74,5 +74,26 @@ Usage: python main.py [--enableWorker] [--workers=2] [--host=localhost] [--port=
 --workers: Number of workers for Gunicorn server
 --host: Host address
 --port: Port number
+
+# Changes to models.py
+After making changes to models.py, run the following command to update the database:
+
+```bash
+alembic revision --autogenerate -m "YOUR COMMIT MESSAGE HERE"
+alembic upgrade head
+
 ```
+
+
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Contact
+
+If you have any questions or feedback, please feel free to contact us at [prince@wceverything.com](mailto:prince@wceverything.com).
+
+## 🌐 Website
+www.unipigames.com
 ```
