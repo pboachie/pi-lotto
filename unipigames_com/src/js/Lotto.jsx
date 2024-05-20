@@ -1,26 +1,29 @@
-// Lotto.js
 import React, { useState, useEffect, useRef } from "react";
 import PurchaseModal from "./PurchaseModal";
 import "../css/Lotto.css";
 import { makeApiRequest } from '../utils/api';
 import { FaArrowLeft } from 'react-icons/fa';
+import AlertBox from '../utils/AlertBox';
 
 function Lotto({ game, onBackToDashboard }) {
   const [numbers, setNumbers] = useState([]);
   const [PiLotto, setPiLotto] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertTitle, setAlertTitle] = useState('Alert');
+
   const [ticketDetails, setTicketDetails] = useState({
     ticketPrice: null,    baseFee: null,
-    serviceFee: null,
+    serviceFee: null,     txID: null,
+    gameID: null
   });
 
   const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     if (game) {
-      setNumbers(Array(5).fill(null));
-
-      // Add background-image to .lotto-ticket based on game.game_config.game_image
+      resetGame();
       const lottoTicket = document.querySelector('.lotto-ticket');
       lottoTicket.style.backgroundImage = `url(${game.game_config.game_image})`;
       lottoTicket.style.backgroundSize = 'cover';
@@ -29,19 +32,30 @@ function Lotto({ game, onBackToDashboard }) {
     }
   }, [game]);
 
+  const resetGame = () => {
+    setNumbers(Array(5).fill(null));
+    setPiLotto(null);
+  };
+
   const fetchTicketDetails = async () => {
     try {
-      const response = await makeApiRequest('get', "http://localhost:5000/api/ticket-details", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("@pi-lotto:access_token")}`,
-        },
-      });
+      const game_id = game.id;
+      console.log("gameID:", game_id)
+
+      const payload = {
+        numbers: numbers,
+        PiLotto: PiLotto
+      };
+
+      console.log("Numbers selected:", numbers);
+      console.log("SuperPi number:", PiLotto);
+
+      const response = await makeApiRequest('put', `http://localhost:5000/api/ticket-details/${game_id}`, payload);
       setTicketDetails(response.data);
     } catch (error) {
       console.error("Error fetching ticket details:", error);
     }
   };
-
 
   const handleNumberClick = (number) => {
     if (!isNumberDisabled(number)) {
@@ -53,7 +67,6 @@ function Lotto({ game, onBackToDashboard }) {
       }
     }
   };
-
 
   const handlePiLottoClick = (number) => {
     if (!isNumberDisabled(number)) {
@@ -83,35 +96,62 @@ function Lotto({ game, onBackToDashboard }) {
   };
 
   const handleSubmit = async () => {
-    // Check if all 5 numbers and the PiLotto number are selected
-    const allNumbersSelected =
-      numbers.every((num) => num !== null) && PiLotto !== null;
+    const allNumbersSelected = numbers.every((num) => num !== null) && PiLotto !== null;
 
     if (allNumbersSelected) {
-      // Fetch ticket details before showing the modal
       await fetchTicketDetails();
 
-      // Handle ticket purchase logic here
       console.log("Selected numbers:", numbers);
       console.log("SuperPi number:", PiLotto);
 
       setShowModal(true);
     } else {
-      alert(
-        "Please select all 5 numbers and the SuperPi number to purchase a ticket."
-      );
+      setAlertTitle("Warning");
+      setAlertMessage("Please select all 6 numbers and the SuperPi number to purchase a ticket.");
+      setShowAlert(true);
     }
+  };
+
+  const handlePurchaseConfirmation = async () => {
+    try {
+      const response = await makeApiRequest('post', "http://localhost:5000/api/submit-ticket", ticketDetails);
+
+      console.log("Ticket purchase response:", response);
+
+      setShowModal(false);
+
+      if (response.status === 200) {
+        setAlertTitle('Ticket purchased successfully!');
+        setAlertMessage('Your ticket has been purchased and submitted. Good luck with your selected numbers!');
+      } else {
+        setAlertTitle('Error');
+        setAlertMessage('Error confirming purchase. Please try again.');
+      }
+      setShowAlert(true);
+    } catch (error) {
+      console.error("Error confirming purchase:", error);
+      setAlertMessage('Error confirming purchase. Please try again.');
+      setShowAlert(true);
+    }
+
+    setShowModal(false);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
   };
 
-  const calculatePrizeAmount = (matchedNumbers) => {
+  const handleAlertClose = () => {
+    setShowAlert(false);
+    resetGame();
+  };
+
+  const calculatePrizeAmount = (matchedNumbers, hasPower) => {
     const prizeDistribution = JSON.parse(game.game_config.prize_distribution);
-    const prizePercentage = prizeDistribution[`${matchedNumbers}_with_power`] || prizeDistribution[`${matchedNumbers}`] || 0;
+    const key = hasPower ? `${matchedNumbers}_with_power` : `${matchedNumbers}`;
+    const prizePercentage = prizeDistribution[key] || 0;
     const prizeAmount = prizePercentage * game.pool_amount;
-    return prizeAmount.toFixed(2);
+    return prizeAmount.toFixed(2);  // Format the prize amount to 2 decimal places
   };
 
   const renderPrizeDistribution = () => {
@@ -120,13 +160,14 @@ function Lotto({ game, onBackToDashboard }) {
 
     const prizeDistributionMessage = Object.entries(prizeDistribution)
       .map(([key, value]) => {
-        const matchedNumbers = key.includes('_with_power') ? key.replace('_with_power', '').split('+').length : parseInt(key);
-        const prizeAmount = calculatePrizeAmount(matchedNumbers);
-        return `Match ${matchedNumbers} number${matchedNumbers > 1 ? 's' : ''}, win ${(value * 100).toFixed(2)}% (${prizeAmount} ${process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'})`;
+        const hasPower = key.includes('_with_power');
+        const matchedNumbers = hasPower ? key.replace('_with_power', '') : key;
+        const prizeAmount = calculatePrizeAmount(matchedNumbers, hasPower);
+        return `Match ${matchedNumbers} number${matchedNumbers > 1 ? 's' : ''}${hasPower ? ' with power' : ''}, win ${(value * 100).toFixed(2)}% (${prizeAmount} ${process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'})`;
       })
       .join(', ');
 
-    const drawScheduleMessage = `Draw Schedule: Frequency: ${drawSchedule.frequency}, Day: ${drawSchedule.day}, Time: ${drawSchedule.time}`;
+    const drawScheduleMessage = `Draw Schedule: Frequency: ${drawSchedule.frequency}, Day: ${drawSchedule.day}, Time: ${drawSchedule.time}. Distrubution split between winners. Prize pool is ${game.pool_amount.toFixed(2)} ${process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}`; // Format pool amount to 2 decimal places
 
     return (
       <div className="game-details-scrollable" ref={scrollContainerRef}>
@@ -176,7 +217,7 @@ function Lotto({ game, onBackToDashboard }) {
         </button>
         <div className="pool-size">
           <h3>Current Pool Size</h3>
-          <p className="pool-amount">{game.pool_amount} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p>
+          <p className="pool-amount">{game.pool_amount.toFixed(2)} {process.env.NODE_ENV === 'production' ? 'π' : 'Test-π'}</p> {/* Format pool amount to 2 decimal places */}
         </div>
       </div>
       <div className="lotto-container">
@@ -239,12 +280,15 @@ function Lotto({ game, onBackToDashboard }) {
       {showModal && (
         <PurchaseModal
           numberSets={numberSets}
+          ticketNumber={ticketDetails.txID}
           ticketPrice={ticketDetails.ticketPrice}
           baseFee={ticketDetails.baseFee}
           serviceFee={ticketDetails.serviceFee}
           onClose={handleCloseModal}
+          onConfirmPurchase={handlePurchaseConfirmation}
         />
       )}
+      {showAlert && <AlertBox title={alertTitle} body={alertMessage} onClose={handleAlertClose} />}
     </div>
   );
 }
