@@ -25,7 +25,7 @@ Usage: python main.py [--enableWorker] [--workers=2] [--host=localhost] [--port=
 --port: Port number
 
 # Changes to models.py
-After making changes to models.py, run the following command to update the database:
+# After making changes to models.py, run the following command to update the database:
 
 ```bash
 alembic revision --autogenerate -m "YOUR COMMIT MESSAGE HERE"

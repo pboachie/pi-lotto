@@ -65,8 +65,11 @@ source .venv/bin/activate
 # Install the dependencies
 python3 -m pip install -r requirements.txt
 
-# Start the development server with default settings
+# Start the production server with default settings
 python3 main.py
+
+# To start the development server with fastapi
+fastapi dev  --port 5000 --host localhost
 
 # Start the development server with Gunicorn
 Usage: python main.py [--enableWorker] [--workers=2] [--host=localhost] [--port=5000]
@@ -76,7 +79,7 @@ Usage: python main.py [--enableWorker] [--workers=2] [--host=localhost] [--port=
 --port: Port number
 
 # Changes to models.py
-After making changes to models.py, run the following command to update the database:
+# After making changes to models.py, run the following command to update the database:
 
 ```bash
 alembic revision --autogenerate -m "YOUR COMMIT MESSAGE HERE"
