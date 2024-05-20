@@ -71,6 +71,8 @@ def serve(use_gunicorn, n_workers, host, port):
         response = await call_next(request)
         return response
 
+    start_scheduler()
+
     if use_gunicorn:
         from gunicorn.app.wsgiapp import WSGIApplication
 
@@ -102,7 +104,6 @@ def serve(use_gunicorn, n_workers, host, port):
         uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
-    start_scheduler()
 
     use_gunicorn: bool = False
     n_workers: int = 1
