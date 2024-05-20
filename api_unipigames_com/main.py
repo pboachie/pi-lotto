@@ -13,6 +13,7 @@ from src.utils.utils import load_config
 from src.auth_routes import auth_router
 from src.payment_routes import payment_router
 from src.game_routes import game_router
+from src.user_routes import user_router
 
 # Load the config file
 config = get_config()
@@ -24,6 +25,7 @@ api_router = APIRouter()
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(payment_router, prefix="/payments", tags=["Payments"])
 api_router.include_router(game_router, prefix="/games", tags=["Games"])
+api_router.include_router(user_router, prefix="/users", tags=["Users"])
 
 # Mount the APIRouter
 app.include_router(api_router)
