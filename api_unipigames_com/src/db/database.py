@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, event
 from src.db.models import Base, sessionmaker, Session, Ticket, Game, Transaction, after_insert_ticket, after_update_ticket, after_update_game_winner, after_insert_ticket
 from src.utils.utils import load_config
 from sqlalchemy.sql import func
-import datetime
+import datetime, timedelta
 
 def get_db():
     db = SessionLocal()
@@ -53,3 +53,23 @@ def update_pool_amount():
         print(f"Error updating pool amounts: {e}")
     finally:
         session.close()
+
+def cancel_old_pending_lotto_entries():
+    try:
+        session = SessionLocal()
+        cutoff_time = datetime.now() - timedelta(hours=8)
+
+        # Update transactions that are 'lotto_entry', 'pending', and older than 8 hours
+        session.query(Transaction).filter(
+            Transaction.transaction_type == 'lotto_entry',
+            Transaction.status == 'pending',
+            Transaction.dateModified <= cutoff_time
+        ).update({"status": "cancelled"}, synchronize_session='fetch')
+
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Error updating pending lotto transactions to cancelled: {e}")
+    finally:
+        session.close()
+

@@ -5,7 +5,8 @@ import sys
 from src.utils.utils import logging, JSONResponse
 from src.dependencies import get_config, app, APIRouter, Request, status
 from apscheduler.schedulers.background import BackgroundScheduler
-from src.db.database import update_pool_amount
+from apscheduler.triggers.cron import CronTrigger
+from src.db.database import update_pool_amount, cancel_old_pending_lotto_entries
 from src.utils.utils import load_config
 
 # Import the route files
@@ -52,7 +53,8 @@ async def loaderio_verification():
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
-    scheduler.add_job(update_pool_amount, 'interval', minutes=1)
+    scheduler.add_job(update_pool_amount, 'interval', minutes=1, id='update_pool_amount')
+    scheduler.add_job(cancel_old_pending_lotto_entries, CronTrigger(hour=3, minute=0), id='cancel_lotto_transactions_daily') # Schedule to run once a day at 3 AM
     scheduler.start()
 
 def serve(use_gunicorn, n_workers, host, port):
