@@ -6,6 +6,7 @@ import SideMenu from "./SideMenu";
 import PiDeposit from "./PiDeposit";
 import PiWithdraw from "./PiWithdraw";
 import PurchaseModal from './PurchaseModal';
+import UserTickets from './UserTickets';  // Import the UserTickets component
 import { makeApiRequest } from '../utils/api';
 import "../css/PiDashboard.css";
 import { FaBars, FaUser } from "react-icons/fa";
@@ -24,7 +25,7 @@ function PiLotto() {
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [isPurchaseModalVisible, setIsPurchaseModalVisible] = useState(false);
   const [gameTypes, setGameTypes] = useState([]);
-
+  const [isUserTicketsVisible, setIsUserTicketsVisible] = useState(false);  // New state for user tickets
 
   const userIconRef = useRef(null);
 
@@ -91,8 +92,6 @@ function PiLotto() {
     }
   }, [isAuthenticated, user, fetchUserBalance, fetchGameTypes]);
 
-
-
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -112,6 +111,7 @@ function PiLotto() {
     setIsDepositVisible(false);
     setIsWithdrawVisible(false);
     setIsPurchaseModalVisible(false);
+    setIsUserTicketsVisible(false);  // Close user tickets
     setSelectedGame(null);
   };
 
@@ -153,7 +153,6 @@ function PiLotto() {
   };
 
   const handleWithdraw = () => {
-
     // Close other components
     handleCloseComponents();
 
@@ -198,6 +197,13 @@ function PiLotto() {
     setIsLogoutModalVisible(false);
   };
 
+  const handleMyTickets = () => {
+    // Close other components
+    handleCloseComponents();
+
+    setIsUserTicketsVisible(true);
+  };
+
   const renderMainContent = () => {
     if (!isAuthenticated) {
       return (
@@ -209,24 +215,24 @@ function PiLotto() {
       );
     }
 
-    //Moved to svelte
     if (isLoading) {
       return <div className="loading">Loading...</div>;
     }
 
-    /// Moved to svelte
     if (selectedGame === "pilotto") {
       return <PiLottoDashboard />;
     }
 
-    // Moved to svelte
     if (isDepositVisible) {
       return <PiDeposit onClose={() => setIsDepositVisible(false)} isAuthenticated={isAuthenticated} userBalance={userBalance} updateUserBalance={updateUserBalance} />;
-
     }
-    // Moved to svelte
+
     if (isWithdrawVisible) {
       return <PiWithdraw onClose={() => setIsWithdrawVisible(false)} isAuthenticated={isAuthenticated} userBalance={userBalance} updateUserBalance={updateUserBalance} />;
+    }
+
+    if (isUserTicketsVisible) {
+      return <UserTickets />;  // Render UserTickets component
     }
 
     return (
@@ -261,6 +267,7 @@ function PiLotto() {
               <FaUser />
               {isUserMenuOpen && (
                 <div className="user-menu">
+                  <button onClick={handleMyTickets}>My Tickets</button> {/* Add My Tickets button */}
                   <button onClick={handleDeposit}>Deposit</button>
                   <button onClick={handleWithdraw}>Withdraw</button>
                   <button onClick={handleLogout}>Logout</button>
@@ -301,7 +308,7 @@ function PiLotto() {
           baseFee={0}
           serviceFee={0}
           onClose={() => setIsPurchaseModalVisible(false)}
-            />
+        />
       )}
       <div className="main-content">{renderMainContent()}</div>
     </div>

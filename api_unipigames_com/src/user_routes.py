@@ -9,7 +9,7 @@ from src.dependencies import get_db_session
 
 user_router = APIRouter()
 
-@user_router.get("/api/user-tickets")
+@user_router.get("/user-tickets")
 async def get_user_tickets(current_user: User = Depends(get_current_user), db: Session = Depends(get_db_session)):
     user = db.query(User).filter(User.uid == current_user.uid).first()
     if not user:
