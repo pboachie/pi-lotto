@@ -1,0 +1,96 @@
+/* PurchaseModal.css */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.ticket-modal {
+  text-align: center;
+}
+
+.ticket-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.ticket-pilotto-label {
+  font-size: 24px;
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.ticket-PiLotto-symbol {
+  font-size: 32px;
+}
+
+.ticket-numbers-section {
+  margin-bottom: 20px;
+}
+
+.ticket-number-set {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ticket-number {
+  background-color: #f0f0f0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.ticket-PiLotto {
+  background-color: #007bff;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.ticket-details-section {
+  margin-bottom: 20px;
+}
+
+.ticket-number-label {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.ticket-cost-section {
+  margin-bottom: 10px;
+}
+
+.ticket-barcode-section {
+  margin-bottom: 20px;
+}
+
+.close-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}

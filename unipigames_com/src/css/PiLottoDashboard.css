@@ -1,0 +1,76 @@
+/* PiLottoDashboard.css */
+.pi-lotto-dashboard {
+  padding: 20px;
+}
+
+.game-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 100px);
+}
+
+.game-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+}
+
+.game-card:hover {
+  transform: translateY(-5px);
+}
+
+.game-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.game-info {
+  padding: 10px;
+}
+
+.game-info h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.game-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #888;
+}
+
+.game-details {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.draw-schedule {
+  background-color: #f0f0f0;
+  padding: 5px 10px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.draw-schedule p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.draw-schedule strong {
+  font-weight: bold;
+}
+
+@media screen and (max-width: 768px) {
+  .game-list {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}

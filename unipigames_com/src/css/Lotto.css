@@ -1,0 +1,284 @@
+/* Lotto.css */
+.lotto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 5px;
+  background-color: #ff8c00;
+  color: #fff;
+  padding: inherit;
+}
+
+.back-button {
+  background-color: transparent;
+  border: none;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.pool-size {
+  text-align: right;
+  font-weight: bold;
+}
+
+.lotto-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.lotto-ticket {
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 10px;
+  width: 100%;
+  max-width: 400px;
+  position: sticky;
+  top: 0;
+}
+
+.lotto-ticket h3 {
+  color: #007bff;
+  background-color: white;
+
+}
+
+.ticket-numbers {
+  display: flex;
+  justify-content: center;
+  margin-top: 5px;
+}
+
+.ticket-number,
+.ticket-PiLotto {
+  background-color: #f0ad4e; /* Color for SuperPi number */
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 5px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.ticket-PiLotto.selected {
+  background-color: red; /* Color for SuperPi number */
+}
+
+.ticket-number-label {
+  margin-top: 5px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.ticket-number.selected {
+  background-color: green; /* Color for selected number */
+}
+
+.purchase-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.game-details-scrollable {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-bottom: 10px;
+}
+
+
+.game-details-scroll-content {
+  display: inline-block;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  animation: scrollAnimation 120s linear infinite; /* Adjust the duration to slow down the scroll speed */
+}
+
+.game-details-scroll-content p {
+  margin: 0;
+  font-size: 14px;
+}
+
+@keyframes scrollAnimation {
+  0% {
+    transform: translateX(15%);
+  }
+  90% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(15%); /* Reset the animation at 90% */
+  }
+}
+
+
+.prize-distribution,
+.draw-schedule {
+  padding: 10px;
+  text-align: center;
+}
+
+.prize-distribution ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+}
+
+.prize-distribution li {
+  margin-right: 20px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.draw-schedule p {
+  margin: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.number-selector-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.PiLotto-grid {
+  margin: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.PiLotto-button {
+  background-color: #f0ad4e; /* Color for SuperPi number */
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 2px;
+}
+
+.PiLotto-button.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.PiLotto-button.selected {
+  background-color: red; /* Color for SuperPi number */
+  color: #fff;
+}
+
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+  gap: 2px;
+  max-width: 100%;
+}
+
+.number-button {
+  background-color: #3e8e41; /* Color for other numbers */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.number-button.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.number-button.selected {
+  background-color: #f0ad4e; /* Color for SuperPi number */
+  color: #fff;
+}
+
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+  gap: 2px;
+  max-width: 100%;
+}
+
+.number-button {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.number-button.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.number-button.selected {
+  background-color: #3e8e41;
+  color: #fff;
+}
+
+@media screen and (min-width: 768px) {
+  .lotto-container {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .lotto-ticket {
+    margin-right: 20px;
+  }
+
+  .game-details {
+    flex-basis: calc(50% - 20px);
+  }
+
+  .number-selector-container {
+    flex-direction: row;
+  }
+
+  .PiLotto-grid {
+    margin-top: 0;
+    margin-right: 20px;
+  }
+}
